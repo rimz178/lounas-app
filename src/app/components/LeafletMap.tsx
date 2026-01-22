@@ -7,8 +7,6 @@ import "leaflet/dist/leaflet.css";
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
-import { restaurants } from "../data/restaurants";
-
 const leafletVersion = "1.9.4";
 
 L.Icon.Default.mergeOptions({
@@ -22,6 +20,13 @@ const HELSINKI_CENTER: LatLngExpression = [60.1699, 24.9384];
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
+  restaurants: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    url: string;
+  }>;
 };
 
 function SelectedRestaurantController({
@@ -53,6 +58,7 @@ function SelectedRestaurantController({
 export default function LeafletMap({
   selectedRestaurantId,
   onSelectRestaurantId,
+  restaurants,
 }: Props) {
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
 
@@ -60,7 +66,7 @@ export default function LeafletMap({
     if (!selectedRestaurantId) return undefined;
     const r = restaurants.find((x) => x.id === selectedRestaurantId);
     return r ? { lat: r.lat, lng: r.lng } : undefined;
-  }, [selectedRestaurantId]);
+  }, [selectedRestaurantId, restaurants]);
 
   return (
     <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
