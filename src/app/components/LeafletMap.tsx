@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useMemo, useRef } from "react";
+
 import L, { type LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 import { restaurants } from "../data/restaurants";
 
@@ -17,7 +19,49 @@ L.Icon.Default.mergeOptions({
 
 const HELSINKI_CENTER: LatLngExpression = [60.1699, 24.9384];
 
-export default function LeafletMap() {
+type Props = {
+  selectedRestaurantId?: string;
+  onSelectRestaurantId?: (id: string) => void;
+};
+
+function SelectedRestaurantController({
+  selectedRestaurantId,
+  target,
+  markerRefs,
+}: {
+  selectedRestaurantId?: string;
+  target?: { lat: number; lng: number };
+  markerRefs: React.MutableRefObject<Record<string, L.Marker | null>>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!selectedRestaurantId || !target) return;
+
+    map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 16), {
+      animate: true,
+      duration: 0.6,
+    });
+
+    const marker = markerRefs.current[selectedRestaurantId];
+    marker?.openPopup();
+  }, [map, markerRefs, selectedRestaurantId, target]);
+
+  return null;
+}
+
+export default function LeafletMap({
+  selectedRestaurantId,
+  onSelectRestaurantId,
+}: Props) {
+  const markerRefs = useRef<Record<string, L.Marker | null>>({});
+
+  const selectedTarget = useMemo(() => {
+    if (!selectedRestaurantId) return undefined;
+    const r = restaurants.find((x) => x.id === selectedRestaurantId);
+    return r ? { lat: r.lat, lng: r.lng } : undefined;
+  }, [selectedRestaurantId]);
+
   return (
     <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
       <MapContainer
@@ -25,6 +69,12 @@ export default function LeafletMap() {
         zoom={14}
         className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
       >
+        <SelectedRestaurantController
+          selectedRestaurantId={selectedRestaurantId}
+          target={selectedTarget}
+          markerRefs={markerRefs}
+        />
+
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -33,7 +83,19 @@ export default function LeafletMap() {
         {restaurants.map((r) => {
           const position: LatLngExpression = [r.lat, r.lng];
           return (
-            <Marker key={r.id} position={position}>
+            <Marker
+              key={r.id}
+              position={position}
+              // react-leaflet ref gives access to underlying Leaflet marker instance
+              ref={(marker) => {
+                markerRefs.current[r.id] = marker;
+              }}
+              eventHandlers={{
+                click: () => {
+                  onSelectRestaurantId?.(r.id);
+                },
+              }}
+            >
               <Popup>
                 <strong>{r.name}</strong>
                 <br />
