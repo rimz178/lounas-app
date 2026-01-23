@@ -1,39 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useState } from "react";
 import RestaurantMap from "./Map";
+import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
 
-interface Restaurant {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  url: string;
-}
-/**
- *  this component fetches restaurant data from Supabase and displays it on a map.
- * @returns  restaurants
- */
 export default function HomeClient() {
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<
-    string | undefined
-  >(undefined);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-
-  useEffect(() => {
-    async function fetchRestaurants() {
-      const { data, error } = await supabase.from("ravintolat").select("*");
-      if (!error) setRestaurants((data ?? []) as Restaurant[]);
-      if (error) console.error("Supabase error:", error);
-    }
-    fetchRestaurants();
-  }, []);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | undefined>(undefined);
+  const { restaurants, userLocation } = useNearbyRestaurants(15); 
 
   return (
     <RestaurantMap
       selectedRestaurantId={selectedRestaurantId}
       onSelectRestaurantId={setSelectedRestaurantId}
       restaurants={restaurants}
+      userLocation={userLocation}
     />
+  
   );
 }
