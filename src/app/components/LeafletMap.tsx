@@ -3,11 +3,21 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import L, { type LatLngExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 const leafletVersion = "1.9.4";
+
+/**
+ * LeafletMap renders an interactive map with restaurant markers.
+ * 
+ * @param {Object} props - Component props
+ * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
+ * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
+ * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display as markers
+ * @returns {JSX.Element} The rendered map component
+ */
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: `https://unpkg.com/leaflet@${leafletVersion}/dist/images/marker-icon-2x.png`,
@@ -92,7 +102,7 @@ export default function LeafletMap({
             <Marker
               key={r.id}
               position={position}
-              // react-leaflet ref gives access to underlying Leaflet marker instance
+              
               ref={(marker) => {
                 markerRefs.current[r.id] = marker;
               }}

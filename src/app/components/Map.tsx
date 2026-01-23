@@ -1,6 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+/**
+ * RestaurantMap renders a section containing a map of restaurants.
+ *
+ * @param {Props} props - The props for the component
+ * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (optional)
+ * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant is selected (optional)
+ * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display on the map
+ * @returns {JSX.Element} The rendered map section
+ */
 
 type Props = {
   selectedRestaurantId?: string;

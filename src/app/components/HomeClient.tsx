@@ -6,8 +6,14 @@ import RestaurantMap from "./Map";
 interface Restaurant {
   id: string;
   name: string;
+  lat: number;
+  lng: number;
+  url: string;
 }
-
+/**
+ *  this component fetches restaurant data from Supabase and displays it on a map.
+ * @returns  restaurants
+ */
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     string | undefined
