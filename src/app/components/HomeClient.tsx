@@ -1,9 +1,7 @@
 "use client";
-
-import { useState, useEffect } from "react";
-
-import RestaurantMap from "./Map";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import RestaurantMap from "./Map";
 
 interface Restaurant {
   id: string;
