@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+
 /**
  * RestaurantMap renders a section containing a map of restaurants.
  *
@@ -8,6 +9,7 @@ import dynamic from "next/dynamic";
  * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (optional)
  * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant is selected (optional)
  * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display on the map
+ * @param {{lat: number, lng: number}=} props.userLocation - User's location (optional)
  * @returns {JSX.Element} The rendered map section
  */
 
@@ -21,6 +23,7 @@ type Props = {
     lng: number;
     url: string;
   }>;
+  userLocation?: { lat: number; lng: number } | null;
 };
 
 const LeafletMap = dynamic<Props>(() => import("./LeafletMap"), {
