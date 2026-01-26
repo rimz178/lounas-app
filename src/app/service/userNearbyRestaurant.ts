@@ -26,7 +26,7 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function useNearbyRestaurants(radiusKm: number = 2) {
+export function useNearbyRestaurants(radiusKm = 2) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
