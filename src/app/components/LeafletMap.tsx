@@ -28,6 +28,10 @@ L.Icon.Default.mergeOptions({
 
 const HELSINKI_CENTER: LatLngExpression = [60.1699, 24.9384];
 
+// Simple validation to avoid NaN or out-of-range coords
+const isValidLat = (lat: number) => Number.isFinite(lat) && lat >= -90 && lat <= 90;
+const isValidLng = (lng: number) => Number.isFinite(lng) && lng >= -180 && lng <= 180;
+
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
@@ -67,17 +71,35 @@ function SelectedRestaurantController({
   return null;
 }
 
-function UserLocationController({ userLocation }: { userLocation?: { lat: number; lng: number } | null }) {
+function UserLocationController({
+  userLocation,
+  selectedRestaurantId,
+}: {
+  userLocation?: { lat: number; lng: number } | null;
+  selectedRestaurantId?: string;
+}) {
   const map = useMap();
+  const prevRef = useRef<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    if (userLocation) {
-      map.flyTo([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 14), {
-        animate: true,
-        duration: 0.8,
-      });
+    if (selectedRestaurantId) return;
+
+    if (userLocation && isValidLat(userLocation.lat) && isValidLng(userLocation.lng)) {
+      const prev = prevRef.current;
+      const moved =
+        !prev ||
+        Math.abs(prev.lat - userLocation.lat) > 0.0001 ||
+        Math.abs(prev.lng - userLocation.lng) > 0.0001;
+
+      if (moved) {
+        prevRef.current = userLocation;
+        map.flyTo([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 14), {
+          animate: true,
+          duration: 0.8,
+        });
+      }
     }
-  }, [userLocation, map]);
+  }, [userLocation, selectedRestaurantId, map]);
 
   return null;
 }
@@ -105,7 +127,7 @@ export default function LeafletMap({
         zoom={14}
         className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
       >
-        <UserLocationController userLocation={userLocation} />
+        <UserLocationController userLocation={userLocation} selectedRestaurantId={selectedRestaurantId} />
         <SelectedRestaurantController
           selectedRestaurantId={selectedRestaurantId}
           target={selectedTarget}
