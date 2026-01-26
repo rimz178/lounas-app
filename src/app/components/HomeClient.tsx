@@ -5,7 +5,7 @@ import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
 
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | undefined>(undefined);
-  const { restaurants, userLocation } = useNearbyRestaurants(15); 
+  const { restaurants, userLocation } = useNearbyRestaurants(1000); 
 
   return (
     <RestaurantMap
