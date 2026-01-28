@@ -1,14 +1,11 @@
 "use client";
 
-type Restaurant = {
-  id: string;
-  name: string;
-  url: string;
-};
+import type { Restaurant } from "../service/userNearbyRestaurant";
 
 /**
  *
- * Renders a list of nearby restaurants.
+ *  @param {Object} props - Component props
+ * @param {Restaurant[]} props.restaurants - Array of restaurants to display
  * @returns  restaurant list component
  *
  */
