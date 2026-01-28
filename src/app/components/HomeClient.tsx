@@ -2,7 +2,7 @@
 import { useState } from "react";
 import RestaurantMap from "./Map";
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
-import RestaurantList from "../components/restaurantList";
+import RestaurantList from "./RestaurantList";
 
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
@@ -23,7 +23,20 @@ export default function HomeClient() {
           min={1}
           max={20}
           value={radius}
-          onChange={(e) => setRadius(Number(e.target.value))}
+          onChange={(e) => {
+            const { value } = e.target;
+            setRadius((prevRadius) => {
+              if (value === "") {
+                return prevRadius;
+              }
+              const parsed = parseInt(value, 10);
+              if (Number.isNaN(parsed)) {
+                return prevRadius;
+              }
+              const clamped = Math.min(20, Math.max(1, parsed));
+              return clamped;
+            });
+          }}
           className="border rounded px-2 py-1 w-16"
         />
         <span>km</span>
