@@ -6,7 +6,8 @@ export default function Home() {
       <div className="p-4">
         <h1 className="text-3xl font-bold mb-4">Lounas Tänään</h1>
         <p className="mb-2">
-           Tervetuloa Lounas Tänään -sivulle. Tämä sovellus auttaa sinua löytämään
+          Tervetuloa Lounas Tänään -sivulle. Tämä sovellus auttaa sinua
+          löytämään
         </p>
         <p>
           Käytä karttaa nähdäksesi lähelläsi olevat ravintolat ja niiden

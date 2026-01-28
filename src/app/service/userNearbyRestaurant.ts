@@ -9,7 +9,6 @@ export interface Restaurant {
   url: string;
 }
 
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -52,9 +51,14 @@ function getDistanceKm(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
 ): number {
-  if (!isValidLat(lat1) || !isValidLng(lng1) || !isValidLat(lat2) || !isValidLng(lng2)) {
+  if (
+    !isValidLat(lat1) ||
+    !isValidLng(lng1) ||
+    !isValidLat(lat2) ||
+    !isValidLng(lng2)
+  ) {
     return Number.POSITIVE_INFINITY;
   }
   const R = 6371;
@@ -70,7 +74,10 @@ function getDistanceKm(
 
 export function useNearbyRestaurants(radiusKm = 2) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchRestaurants() {
@@ -105,7 +112,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
       },
       (err) => {
         console.warn("Sijaintia ei saatu:", err);
-      }
+      },
     );
   }, []);
 
@@ -115,7 +122,9 @@ export function useNearbyRestaurants(radiusKm = 2) {
     userLocation == null
       ? restaurants
       : restaurants.filter(
-          (r) => getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) < safeRadiusKm
+          (r) =>
+            getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
+            safeRadiusKm,
         );
 
   return { restaurants: shownRestaurants, userLocation };
