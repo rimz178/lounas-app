@@ -4,14 +4,13 @@ import { useEffect, useMemo, useRef } from "react";
 
 import L, { type LatLngExpression } from "leaflet";
 
-
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 const leafletVersion = "1.9.4";
 
 /**
  * LeafletMap renders an interactive map with restaurant markers.
- * 
+ *
  * @param {Object} props - Component props
  * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
  * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
@@ -28,9 +27,10 @@ L.Icon.Default.mergeOptions({
 
 const HELSINKI_CENTER: LatLngExpression = [60.1699, 24.9384];
 
-// Simple validation to avoid NaN or out-of-range coords
-const isValidLat = (lat: number) => Number.isFinite(lat) && lat >= -90 && lat <= 90;
-const isValidLng = (lng: number) => Number.isFinite(lng) && lng >= -180 && lng <= 180;
+const isValidLat = (lat: number) =>
+  Number.isFinite(lat) && lat >= -90 && lat <= 90;
+const isValidLng = (lng: number) =>
+  Number.isFinite(lng) && lng >= -180 && lng <= 180;
 
 type Props = {
   selectedRestaurantId?: string;
@@ -84,7 +84,11 @@ function UserLocationController({
   useEffect(() => {
     if (selectedRestaurantId) return;
 
-    if (userLocation && isValidLat(userLocation.lat) && isValidLng(userLocation.lng)) {
+    if (
+      userLocation &&
+      isValidLat(userLocation.lat) &&
+      isValidLng(userLocation.lng)
+    ) {
       const prev = prevRef.current;
       const moved =
         !prev ||
@@ -93,10 +97,14 @@ function UserLocationController({
 
       if (moved) {
         prevRef.current = userLocation;
-        map.flyTo([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 14), {
-          animate: true,
-          duration: 0.8,
-        });
+        map.flyTo(
+          [userLocation.lat, userLocation.lng],
+          Math.max(map.getZoom(), 14),
+          {
+            animate: true,
+            duration: 0.8,
+          },
+        );
       }
     }
   }, [userLocation, selectedRestaurantId, map]);
@@ -118,16 +126,19 @@ export default function LeafletMap({
     return r ? { lat: r.lat, lng: r.lng } : undefined;
   }, [selectedRestaurantId, restaurants]);
 
-
-
   return (
     <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
       <MapContainer
-        center={userLocation ? [userLocation.lat, userLocation.lng] : HELSINKI_CENTER}
+        center={
+          userLocation ? [userLocation.lat, userLocation.lng] : HELSINKI_CENTER
+        }
         zoom={14}
         className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
       >
-        <UserLocationController userLocation={userLocation} selectedRestaurantId={selectedRestaurantId} />
+        <UserLocationController
+          userLocation={userLocation}
+          selectedRestaurantId={selectedRestaurantId}
+        />
         <SelectedRestaurantController
           selectedRestaurantId={selectedRestaurantId}
           target={selectedTarget}
@@ -145,7 +156,6 @@ export default function LeafletMap({
             <Marker
               key={r.id}
               position={position}
-              
               ref={(marker) => {
                 markerRefs.current[r.id] = marker;
               }}
