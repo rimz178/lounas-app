@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { getLatestMenusByRestaurant } from "./restaurants";
 
 export interface Restaurant {
   id: string;
@@ -86,13 +87,29 @@ export function useNearbyRestaurants(radiusKm = 2) {
       const { data, error } = await supabase.from("ravintolat").select("*");
       if (error) {
         console.error("Supabase error:", error);
+        setRestaurants([]);
         return;
       }
+
       if (Array.isArray(data)) {
         const normalized: Restaurant[] = data
           .map((row): Restaurant | null => toRestaurant(row))
           .filter((r): r is Restaurant => r !== null);
-        setRestaurants(normalized);
+
+        // Hae menut menus-taulusta ja liitä mukaan
+        let merged = normalized;
+        try {
+          const ids = normalized.map((r) => r.id);
+          const menusByRestaurant = await getLatestMenusByRestaurant(ids);
+          merged = normalized.map((r) => ({
+            ...r,
+            menus_text: menusByRestaurant[r.id] ?? r.menus_text,
+          }));
+        } catch (e) {
+          console.warn("Menus fetch failed:", e);
+        }
+
+        setRestaurants(merged);
       } else {
         setRestaurants([]);
       }

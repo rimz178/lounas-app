@@ -169,7 +169,7 @@ export default function LeafletMap({
               <Popup>
                 <strong>{r.name}</strong>
                 {(() => {
-                  const items = (r.menu_text ?? "")
+                  const items = (r.menus_text ?? "")
                     .split(/\n|[,;•–-]/)
                     .map((s) => s.trim())
                     .filter(Boolean)
