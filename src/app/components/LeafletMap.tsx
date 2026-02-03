@@ -7,6 +7,7 @@ import L, { type LatLngExpression } from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
+import type { Restaurant } from "../service/userNearbyRestaurant";
 
 const leafletVersion = "1.9.4";
 
@@ -37,13 +38,7 @@ const isValidLng = (lng: number) =>
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
-  restaurants: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    url: string;
-  }>;
+  restaurants: Restaurant[];
   userLocation?: { lat: number; lng: number } | null;
 };
 
@@ -173,7 +168,20 @@ export default function LeafletMap({
             >
               <Popup>
                 <strong>{r.name}</strong>
-                <br />
+                {(() => {
+                  const items = (r.menu_text ?? "")
+                    .split(/\n|[,;•–-]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .slice(0, 3);
+                  return items.length ? (
+                    <div style={{ margin: "6px 0" }}>
+                      {items.map((item, i) => (
+                        <div key={i}>• {item}</div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
                 <a href={r.url} target="_blank" rel="noreferrer">
                   Avaa ravintolan sivut
                 </a>

@@ -41,11 +41,12 @@ function toRestaurant(row: unknown): Restaurant | null {
 
   const lat = toNumber(o.lat);
   const lng = toNumber(o.lng);
+  const menu_text = typeof o.menu_text === "string" ? o.menu_text : undefined;
 
   if (!id || !name || lat === null || lng === null) return null;
   if (!isValidLat(lat) || !isValidLng(lng)) return null;
 
-  return { id, name, lat, lng, url };
+  return { id, name, lat, lng, url, menu_text };
 }
 
 function getDistanceKm(
