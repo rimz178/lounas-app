@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { getLatestMenusByRestaurant } from "./restaurants";
 
 export interface Restaurant {
   id: string;
@@ -7,6 +8,7 @@ export interface Restaurant {
   lat: number;
   lng: number;
   url: string;
+  menu_text?: string;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -40,11 +42,12 @@ function toRestaurant(row: unknown): Restaurant | null {
 
   const lat = toNumber(o.lat);
   const lng = toNumber(o.lng);
+  const menu_text = typeof o.menu_text === "string" ? o.menu_text : undefined;
 
   if (!id || !name || lat === null || lng === null) return null;
   if (!isValidLat(lat) || !isValidLng(lng)) return null;
 
-  return { id, name, lat, lng, url };
+  return { id, name, lat, lng, url, menu_text };
 }
 
 function getDistanceKm(
@@ -84,13 +87,28 @@ export function useNearbyRestaurants(radiusKm = 2) {
       const { data, error } = await supabase.from("ravintolat").select("*");
       if (error) {
         console.error("Supabase error:", error);
+        setRestaurants([]);
         return;
       }
+
       if (Array.isArray(data)) {
         const normalized: Restaurant[] = data
           .map((row): Restaurant | null => toRestaurant(row))
           .filter((r): r is Restaurant => r !== null);
-        setRestaurants(normalized);
+          
+        let merged = normalized;
+        try {
+          const ids = normalized.map((r) => r.id);
+          const menusByRestaurant = await getLatestMenusByRestaurant(ids);
+          merged = normalized.map((r) => ({
+            ...r,
+            menus_text: menusByRestaurant[r.id] ?? r.menus_text,
+          }));
+        } catch (e) {
+          console.warn("Menus fetch failed:", e);
+        }
+
+        setRestaurants(merged);
       } else {
         setRestaurants([]);
       }

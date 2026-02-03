@@ -6,6 +6,9 @@ import L, { type LatLngExpression } from "leaflet";
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
+import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
+import type { Restaurant } from "../service/userNearbyRestaurant";
+
 const leafletVersion = "1.9.4";
 
 /**
@@ -35,13 +38,7 @@ const isValidLng = (lng: number) =>
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
-  restaurants: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    url: string;
-  }>;
+  restaurants: Restaurant[];
   userLocation?: { lat: number; lng: number } | null;
 };
 
@@ -118,25 +115,29 @@ export default function LeafletMap({
   restaurants,
   userLocation,
 }: Props) {
-  const markerRefs = useRef<Record<string, L.Marker | null>>({});
+  const { restaurants: hookRestaurants, userLocation: hookUserLocation } = useNearbyRestaurants();
 
+  const restaurantsToUse = restaurants ?? hookRestaurants;
+  const userLocationToUse = userLocation ?? hookUserLocation;
+
+  const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const selectedTarget = useMemo(() => {
     if (!selectedRestaurantId) return undefined;
-    const r = restaurants.find((x) => x.id === selectedRestaurantId);
+    const r = restaurantsToUse.find((x) => x.id === selectedRestaurantId);
     return r ? { lat: r.lat, lng: r.lng } : undefined;
-  }, [selectedRestaurantId, restaurants]);
+  }, [selectedRestaurantId, restaurantsToUse]);
 
   return (
     <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
       <MapContainer
         center={
-          userLocation ? [userLocation.lat, userLocation.lng] : HELSINKI_CENTER
+          userLocationToUse ? [userLocationToUse.lat, userLocationToUse.lng] : HELSINKI_CENTER
         }
         zoom={14}
         className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
       >
         <UserLocationController
-          userLocation={userLocation}
+          userLocation={userLocationToUse}
           selectedRestaurantId={selectedRestaurantId}
         />
         <SelectedRestaurantController
@@ -150,7 +151,7 @@ export default function LeafletMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {restaurants.map((r) => {
+        {restaurantsToUse.map((r) => {
           const position: LatLngExpression = [r.lat, r.lng];
           return (
             <Marker
@@ -167,7 +168,20 @@ export default function LeafletMap({
             >
               <Popup>
                 <strong>{r.name}</strong>
-                <br />
+                {(() => {
+                  const items = (r.menus_text ?? "")
+                    .split(/\n|[,;•–-]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .slice(0, 4);
+                  return items.length ? (
+                    <div style={{ margin: "8px 2" }}>
+                      {items.map((item, i) => (
+                        <div key={i}>• {item}</div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
                 <a href={r.url} target="_blank" rel="noreferrer">
                   Avaa ravintolan sivut
                 </a>
@@ -176,9 +190,9 @@ export default function LeafletMap({
           );
         })}
 
-        {userLocation && (
+        {userLocationToUse && (
           <Marker
-            position={[userLocation.lat, userLocation.lng]}
+            position={[userLocationToUse.lat, userLocationToUse.lng]}
             icon={L.divIcon({
               className: "",
               html: `<div style="background:#2563eb;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 6px #2563eb;"></div>`,

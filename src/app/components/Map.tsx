@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { Restaurant } from "../service/userNearbyRestaurant";
 
 /**
  * RestaurantMap renders a section containing a map of restaurants.
@@ -16,13 +17,7 @@ import dynamic from "next/dynamic";
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
-  restaurants: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    url: string;
-  }>;
+  restaurants: Restaurant[];
   userLocation?: { lat: number; lng: number } | null;
 };
 
