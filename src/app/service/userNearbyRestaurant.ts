@@ -7,6 +7,7 @@ export interface Restaurant {
   lat: number;
   lng: number;
   url: string;
+  menu_text?: string;
 }
 
 function isFiniteNumber(value: unknown): value is number {
