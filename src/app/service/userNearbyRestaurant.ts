@@ -95,8 +95,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         const normalized: Restaurant[] = data
           .map((row): Restaurant | null => toRestaurant(row))
           .filter((r): r is Restaurant => r !== null);
-
-        // Hae menut menus-taulusta ja liitä mukaan
+          
         let merged = normalized;
         try {
           const ids = normalized.map((r) => r.id);
