@@ -173,9 +173,9 @@ export default function LeafletMap({
                     .split(/\n|[,;•–-]/)
                     .map((s) => s.trim())
                     .filter(Boolean)
-                    .slice(0, 3);
+                    .slice(0, 4);
                   return items.length ? (
-                    <div style={{ margin: "6px 0" }}>
+                    <div style={{ margin: "8px 2" }}>
                       {items.map((item, i) => (
                         <div key={i}>• {item}</div>
                       ))}
