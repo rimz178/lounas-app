@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
 import type { Restaurant } from "./types";
@@ -75,58 +75,113 @@ export function useNearbyRestaurants(radiusKm = 2) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchRestaurants() {
-      setLoading(true);
-      const { data, error } = await supabase.from("ravintolat").select("*");
-      if (error || !Array.isArray(data)) {
-        console.warn("Supabase error:", error?.message);
-        setRestaurants([]);
-        setLoading(false);
-        return;
-      }
-
-      const parsed = (data ?? [])
-        .map(toRestaurant)
-        .filter((r): r is Restaurant => r !== null);
-
-      try {
-        const ids = parsed.map((r) => r.id);
-        const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-        const merged = parsed.map((r) => ({
-          ...r,
-          menu_text: menusByRestaurant[r.id] ?? r.menu_text,
-        }));
-        setRestaurants(merged);
-      } catch (e) {
-        console.warn("Menus fetch failed:", e);
-        setRestaurants(parsed);
-      }
+  const fetchRestaurants = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("ravintolat").select("*");
+    if (error || !Array.isArray(data)) {
+      console.warn("Supabase error:", error?.message);
+      setRestaurants([]);
       setLoading(false);
+      return;
     }
-    fetchRestaurants();
+
+    const parsed = (data ?? [])
+      .map(toRestaurant)
+      .filter((r): r is Restaurant => r !== null);
+
+    try {
+      const ids = parsed.map((r) => r.id);
+      const menusByRestaurant = await getLatestMenusByRestaurant(ids);
+      const merged = parsed.map((r) => ({
+        ...r,
+        menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+      }));
+      setRestaurants(merged);
+    } catch (e) {
+      console.warn("Menus fetch failed:", e);
+      setRestaurants(parsed);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
+    fetchRestaurants();
+  }, [fetchRestaurants]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("lounas-app-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ravintolat" },
+        (payload) => {
+          console.log("ravintolat INSERT:", payload);
+          fetchRestaurants();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ravintolat" },
+        (payload) => {
+          console.log("ravintolat UPDATE:", payload);
+          fetchRestaurants();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "ravintolat" },
+        (payload) => {
+          console.log("ravintolat DELETE:", payload);
+          fetchRestaurants();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "menus" },
+        (payload) => {
+          console.log("menus INSERT:", payload);
+          fetchRestaurants();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "menus" },
+        (payload) => {
+          console.log("menus UPDATE:", payload);
+          fetchRestaurants();
+        },
+      )
+      .subscribe((status) => {
+        console.log("Realtime status:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRestaurants]);
+
+  useEffect(() => {
     if (!("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         if (isValidLat(lat) && isValidLng(lng)) {
           setUserLocation({ lat, lng });
-        } else {
-          console.warn("Invalid geolocation coordinates:", { lat, lng });
         }
       },
       (err) => {
         console.warn("Sijaintia ei saatu:", err);
       },
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 10_000 },
     );
+    return () => {
+      if (typeof watchId === "number")
+        navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   const safeRadiusKm = Number.isFinite(radiusKm) ? Math.max(0, radiusKm) : 0;
-
   const shownRestaurants =
     userLocation == null
       ? restaurants
@@ -136,5 +191,10 @@ export function useNearbyRestaurants(radiusKm = 2) {
             safeRadiusKm,
         );
 
-  return { restaurants: shownRestaurants, userLocation, loading };
+  return {
+    restaurants: shownRestaurants,
+    userLocation,
+    loading,
+    reload: fetchRestaurants,
+  };
 }
