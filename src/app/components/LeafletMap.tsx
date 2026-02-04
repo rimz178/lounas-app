@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/style/useTemplate: <explanation> */
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";

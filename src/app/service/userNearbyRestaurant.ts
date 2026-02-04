@@ -136,5 +136,5 @@ export function useNearbyRestaurants(radiusKm = 2) {
             safeRadiusKm,
         );
 
-  return { restaurants: shownRestaurants, userLocation };
+  return { restaurants: shownRestaurants, userLocation, loading };
 }
