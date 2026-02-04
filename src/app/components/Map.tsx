@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { Restaurant } from "../service/userNearbyRestaurant";
+import type { Restaurant } from "../service/types";
 
 /**
  * RestaurantMap renders a section containing a map of restaurants.
