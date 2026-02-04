@@ -22,6 +22,4 @@ const serverClient = isServer
     })()
   : null;
 
-export const supabaseServer = serverClient as unknown as ReturnType<
-  typeof createClient
->;
+export const supabaseServer = serverClient;

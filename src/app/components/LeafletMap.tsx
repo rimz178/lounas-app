@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/useTemplate: <explanation> */
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
@@ -171,20 +172,7 @@ export default function LeafletMap({
             >
               <Popup>
                 <strong>{r.name}</strong>
-                {(() => {
-                  const items = (r.menu_text ?? "")
-                    .split(/\n|[,;•–-]/)
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                    .slice(0, 4);
-                  return items.length ? (
-                    <div style={{ margin: "8px 2" }}>
-                      {items.map((item, i) => (
-                        <div key={i}>• {item}</div>
-                      ))}
-                    </div>
-                  ) : null;
-                })()}
+                {renderMenuList(r.menu_text, 6, r.id)}
                 <a href={r.url} target="_blank" rel="noreferrer">
                   Avaa ravintolan sivut
                 </a>
@@ -208,5 +196,50 @@ export default function LeafletMap({
         )}
       </MapContainer>
     </div>
+  );
+}
+
+function cleanMenuText(text?: string): string {
+  return (text ?? "")
+    .replace(/#+/g, "\n") // turn #### into line breaks
+    .replace(/\s{2,}/g, " ") // collapse extra spaces
+    .trim();
+}
+
+function parseMenuItems(text?: string, max = 6): string[] {
+  const raw = cleanMenuText(text);
+  if (!raw) return [];
+
+  const tokens = raw
+    .split(/\r?\n|[•–—\-,:;|]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const unique = Array.from(new Set(tokens));
+  const truncate = (s: string) => (s.length > 90 ? s.slice(0, 87) + "..." : s);
+  return unique.slice(0, max).map(truncate);
+}
+
+function renderMenuList(text: string | undefined, max: number, rid: string) {
+  const items = parseMenuItems(text, max);
+  if (!items.length) {
+    return (
+      <div style={{ margin: "8px 2px", color: "#6b7280" }}>
+        Ei lounaslistaa saatavilla
+      </div>
+    );
+  }
+  return (
+    <ul style={{ margin: "8px 2px", paddingLeft: 0, listStyle: "none" }}>
+      {items.map((item) => (
+        <li
+          key={`${rid}:${item.toLowerCase()}`}
+          style={{ display: "flex", gap: 6, marginTop: 4 }}
+        >
+          <span aria-hidden>•</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

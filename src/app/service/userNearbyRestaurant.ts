@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
 import type { Restaurant } from "./types";
@@ -73,37 +73,36 @@ export function useNearbyRestaurants(radiusKm = 2) {
     lat: number;
     lng: number;
   } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchRestaurants() {
+      setLoading(true);
       const { data, error } = await supabase.from("ravintolat").select("*");
-      if (error) {
-        console.error("Supabase error:", error);
+      if (error || !Array.isArray(data)) {
+        console.warn("Supabase error:", error?.message);
         setRestaurants([]);
+        setLoading(false);
         return;
       }
 
-      if (Array.isArray(data)) {
-        const normalized: Restaurant[] = data
-          .map((row): Restaurant | null => toRestaurant(row))
-          .filter((r): r is Restaurant => r !== null);
+      const parsed = (data ?? [])
+        .map(toRestaurant)
+        .filter((r): r is Restaurant => r !== null);
 
-        let merged = normalized;
-        try {
-          const ids = normalized.map((r) => r.id);
-          const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-          merged = normalized.map((r) => ({
-            ...r,
-            menu_text: menusByRestaurant[r.id] ?? r.menu_text,
-          }));
-        } catch (e) {
-          console.warn("Menus fetch failed:", e);
-        }
-
+      try {
+        const ids = parsed.map((r) => r.id);
+        const menusByRestaurant = await getLatestMenusByRestaurant(ids);
+        const merged = parsed.map((r) => ({
+          ...r,
+          menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+        }));
         setRestaurants(merged);
-      } else {
-        setRestaurants([]);
+      } catch (e) {
+        console.warn("Menus fetch failed:", e);
+        setRestaurants(parsed);
       }
+      setLoading(false);
     }
     fetchRestaurants();
   }, []);
