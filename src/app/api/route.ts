@@ -49,11 +49,72 @@ async function extractMenu(
   return completion.choices?.[0]?.message?.content ?? "";
 }
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "unknown error";
+function isAuthorized(req: Request): boolean {
+  const authHeader = req.headers.get("authorization");
+  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const tokenParam = new URL(req.url).searchParams.get("token");
+  const token = bearer ?? tokenParam;
+  return !!token && token === process.env.MENU_REFRESH_TOKEN;
+}
+
+async function runRefresh(client: OpenAI, ids?: string[]) {
+  const base = supabase
+    .from("ravintolat")
+    .select("id, name, url")
+    .not("url", "is", null)
+    .neq("url", "");
+  const { data, error } = ids
+    ? await base.in("id", ids).returns<RestaurantBrief[]>()
+    : await base.returns<RestaurantBrief[]>();
+
+  if (error) {
+    return Response.json(
+      { ok: false, error: `Supabase: ${error.message}` },
+      { status: 500 },
+    );
+  }
+
+  const withUrl = (data ?? []).filter(hasUrl);
+
+  const entries = await Promise.all(
+    withUrl.map(async (r): Promise<ResultEntry> => {
+      try {
+        const html = await fetchTruncatedHtml(r.url);
+        const menu = await extractMenu(client, r.name, r.url, html);
+        await insertMenu(r.id, menu);
+        return { id: r.id, name: r.name, url: r.url, menu };
+      } catch (e: unknown) {
+        return {
+          id: r.id,
+          name: r.name,
+          url: r.url,
+          error: e instanceof Error ? e.message : "unknown error",
+        };
+      }
+    }),
+  );
+
+  return Response.json({ ok: true, results: entries });
+}
+
+export async function GET(req: Request) {
+  if (!isAuthorized(req))
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || !apiKey.startsWith("sk-")) {
+    return Response.json(
+      { ok: false, error: "OPENAI_API_KEY puuttuu tai on virheellinen" },
+      { status: 500 },
+    );
+  }
+  const client = new OpenAI({ apiKey });
+  return runRefresh(client);
 }
 
 export async function POST(req: Request) {
+  if (!isAuthorized(req))
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !apiKey.startsWith("sk-")) {
     return Response.json(
@@ -69,36 +130,5 @@ export async function POST(req: Request) {
   const ids = Array.isArray(payload.restaurantIds)
     ? payload.restaurantIds
     : undefined;
-
-  const query = supabase
-    .from("ravintolat")
-    .select("id, name, url")
-    .not("url", "is", null)
-    .neq("url", "");
-  const { data, error } = ids
-    ? await query.in("id", ids).returns<RestaurantBrief[]>()
-    : await query.returns<RestaurantBrief[]>();
-
-  if (error)
-    return Response.json(
-      { ok: false, error: `Supabase: ${error.message}` },
-      { status: 500 },
-    );
-
-  const withUrl = (data ?? []).filter(hasUrl);
-
-  const entries = await Promise.all(
-    withUrl.map(async (r): Promise<ResultEntry> => {
-      try {
-        const html = await fetchTruncatedHtml(r.url);
-        const menu = await extractMenu(client, r.name, r.url, html);
-        await insertMenu(r.id, menu);
-        return { id: r.id, name: r.name, url: r.url, menu };
-      } catch (e: unknown) {
-        return { id: r.id, name: r.name, url: r.url, error: errMsg(e) };
-      }
-    }),
-  );
-
-  return Response.json({ ok: true, results: entries });
+  return runRefresh(client, ids);
 }
