@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
-
-export interface Restaurant {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  url: string;
-  menu_text?: string;
-}
+import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -95,14 +87,14 @@ export function useNearbyRestaurants(radiusKm = 2) {
         const normalized: Restaurant[] = data
           .map((row): Restaurant | null => toRestaurant(row))
           .filter((r): r is Restaurant => r !== null);
-          
+
         let merged = normalized;
         try {
           const ids = normalized.map((r) => r.id);
           const menusByRestaurant = await getLatestMenusByRestaurant(ids);
           merged = normalized.map((r) => ({
             ...r,
-            menus_text: menusByRestaurant[r.id] ?? r.menus_text,
+            menu_text: menusByRestaurant[r.id] ?? r.menu_text,
           }));
         } catch (e) {
           console.warn("Menus fetch failed:", e);
