@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api?token=YOUR_MENU_REFRESH_TOKEN",
+      "schedule": "0 8 * * 1",
+      "timezone": "Europe/Helsinki"
+    }
+  ]
+}

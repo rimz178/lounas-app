@@ -1,6 +1,6 @@
 "use client";
 
-import type { Restaurant } from "../service/userNearbyRestaurant";
+import type { Restaurant } from "../service/types";
 
 /**
  *
