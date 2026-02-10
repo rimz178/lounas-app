@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api?token=YOUR_MENU_REFRESH_TOKEN",
+      "path": "/api?token=proj-MmRkYzE3ZTAtY2YwYS00Y2I4LWI3YjctY2E3ZDM2ZjI2ZDYzXzE2OTY0MTc1OTg5NTRfODk2MzkzNw",
       "schedule": "0 8 * * 1",
       "timezone": "Europe/Helsinki"
     }
