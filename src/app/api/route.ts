@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { supabase } from "../lib/supabaseClient";
 import { insertMenu } from "../service/menus";
 import type { RestaurantBrief } from "../service/types";
+import { fetchRenderedHtml } from "./fetchRenderHtml";
 
 type ResultEntry = {
   id: string;
@@ -11,22 +12,31 @@ type ResultEntry = {
   error?: string;
 };
 
-const systemPrompt =
-  "Poimit suomalaisista ravintolasivuista lounaslistat. Tulosta selkeä teksti, ryhmittele viikonpäivittäin (Ma–Su).";
+const systemPrompt = `
+You extract lunch menus from Finnish restaurant websites.
+
+Rules:
+- Use ONLY the provided HTML content.
+- Do NOT invent dishes or days.
+- Ignore opening hours, addresses, prices, allergens, marketing text and footers.
+- If no lunch menu is found, respond exactly: "No lunch menu found."
+
+Output format example:
+
+Ma:
+- Lohikeitto
+- Kasvislasagne
+
+Ti:
+- Broileripasta
+- Vegaaninen curry
+
+Language:
+- Finnish
+`;
 
 function hasUrl(r: RestaurantBrief): r is RestaurantBrief & { url: string } {
   return typeof r.url === "string" && r.url.trim().length > 0;
-}
-
-async function fetchTruncatedHtml(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "lounas-app/1.0",
-      Accept: "text/html,application/xhtml+xml",
-    },
-    cache: "no-store",
-  });
-  return (await res.text()).slice(0, 40_000);
 }
 
 async function extractMenu(
@@ -68,6 +78,7 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     : await base.returns<RestaurantBrief[]>();
 
   if (error) {
+    console.error("Supabase ravintolat error:", error.message);
     return Response.json(
       { ok: false, error: `Supabase: ${error.message}` },
       { status: 500 },
@@ -75,15 +86,27 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
   }
 
   const withUrl = (data ?? []).filter(hasUrl);
+  console.log(
+    "Ravintolat haettu:",
+    withUrl.map((r) => r.name),
+  );
 
   const entries = await Promise.all(
     withUrl.map(async (r): Promise<ResultEntry> => {
       try {
-        const html = await fetchTruncatedHtml(r.url);
+        let html = await fetchRenderedHtml(r.url);
+        if (html.length > 30000) {
+          html = html.slice(0, 30000);
+          console.log(`HTML trimmattu (${r.name}), pituus:`, html.length);
+        }
+        console.log(`HTML haettu (${r.name}):`, html?.slice(0, 200));
         const menu = await extractMenu(client, r.name, r.url, html);
+        console.log(`Menu generoitu (${r.name}):`, menu);
         await insertMenu(r.id, menu);
+        console.log(`Menu tallennettu (${r.name})`);
         return { id: r.id, name: r.name, url: r.url, menu };
       } catch (e: unknown) {
+        console.error(`Virhe (${r.name}):`, e);
         return {
           id: r.id,
           name: r.name,
@@ -94,6 +117,7 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     }),
   );
 
+  console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });
 }
 
