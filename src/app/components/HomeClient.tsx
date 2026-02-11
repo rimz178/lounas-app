@@ -9,37 +9,7 @@ export default function HomeClient() {
     string | undefined
   >(undefined);
   const [radius, setRadius] = useState(2);
-  const { restaurants, userLocation, reload } = useNearbyRestaurants(radius);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshResult, setRefreshResult] = useState<string | null>(null);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    setRefreshResult(null);
-    try {
-      const token = process.env.NEXT_PUBLIC_MENU_REFRESH_TOKEN;
-
-      const res = await fetch("/api", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          restaurantIds: restaurants.map((r) => r.id),
-        }),
-      });
-
-      const data = await res.json();
-      setRefreshResult(JSON.stringify(data, null, 2));
-      if (data.ok) {
-        reload(); 
-      }
-    } catch (e) {
-      setRefreshResult("Virhe: " + (e as Error).message);
-    }
-    setRefreshing(false);
-  }
+  const { restaurants, userLocation} = useNearbyRestaurants(radius);
 
   return (
     <>
@@ -71,15 +41,6 @@ export default function HomeClient() {
         />
         <span>km</span>
       </div>
-      <button
-        type="button"
-        onClick={handleRefresh}
-        disabled={refreshing}
-        className="border rounded px-2 py-1 bg-blue-600 text-white"
-      >
-        {refreshing ? "Päivitetään..." : "Päivitä lounaslistat nyt"}
-      </button>
-      
       <RestaurantMap
         selectedRestaurantId={selectedRestaurantId}
         onSelectRestaurantId={setSelectedRestaurantId}
