@@ -116,7 +116,9 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "INSERT", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat INSERT:", payload);
-          fetchRestaurants();
+          fetchRestaurants().catch((err) => {
+            console.error("Error fetching restaurants after INSERT:", err);
+          });
         },
       )
       .on(
@@ -124,7 +126,9 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "UPDATE", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat UPDATE:", payload);
-          fetchRestaurants();
+          fetchRestaurants().catch((err) => {
+            console.error("Error fetching restaurants after UPDATE:", err);
+          });
         },
       )
       .on(
@@ -132,7 +136,9 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "DELETE", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat DELETE:", payload);
-          fetchRestaurants();
+          fetchRestaurants().catch((err) => {
+            console.error("Error fetching restaurants after DELETE:", err);
+          });
         },
       )
       .on(
@@ -140,7 +146,12 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "INSERT", schema: "public", table: "menus" },
         (payload) => {
           console.log("menus INSERT:", payload);
-          fetchRestaurants();
+          fetchRestaurants().catch((err) => {
+            console.error(
+              "Error fetching restaurants after menus INSERT:",
+              err,
+            );
+          });
         },
       )
       .on(
@@ -148,7 +159,12 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "UPDATE", schema: "public", table: "menus" },
         (payload) => {
           console.log("menus UPDATE:", payload);
-          fetchRestaurants();
+          fetchRestaurants().catch((err) => {
+            console.error(
+              "Error fetching restaurants after menus UPDATE:",
+              err,
+            );
+          });
         },
       )
       .subscribe((status) => {

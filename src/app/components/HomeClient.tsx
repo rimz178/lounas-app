@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import RestaurantMap from "./Map";
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
+import RestaurantMap from "./Map";
 import RestaurantList from "./RestaurantList";
 
 export default function HomeClient() {
@@ -9,7 +9,7 @@ export default function HomeClient() {
     string | undefined
   >(undefined);
   const [radius, setRadius] = useState(2);
-  const { restaurants, userLocation} = useNearbyRestaurants(radius);
+  const { restaurants, userLocation } = useNearbyRestaurants(radius);
 
   return (
     <>
