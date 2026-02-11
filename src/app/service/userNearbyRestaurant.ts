@@ -67,6 +67,8 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const DEBOUNCE_DELAY_MS = 300;
+
 export function useNearbyRestaurants(radiusKm = 2) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
@@ -75,7 +77,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fetchRestaurantsRef = useRef<() => Promise<void>>();
+  const fetchRestaurantsRef = useRef<(() => Promise<void>) | null>(null);
 
   const fetchRestaurants = useCallback(async () => {
     setLoading(true);
@@ -116,7 +118,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
     }
     debounceTimerRef.current = setTimeout(() => {
       fetchRestaurantsRef.current?.();
-    }, 300);
+    }, DEBOUNCE_DELAY_MS);
   }, []);
 
   useEffect(() => {
