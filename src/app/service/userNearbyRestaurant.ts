@@ -168,10 +168,13 @@ export function useNearbyRestaurants(radiusKm = 2) {
         const lng = pos.coords.longitude;
         if (isValidLat(lat) && isValidLng(lng)) {
           setUserLocation({ lat, lng });
+        } else {
+          setUserLocation(null);
         }
       },
       (err) => {
         console.warn("Sijaintia ei saatu:", err);
+        setUserLocation(null);
       },
       { enableHighAccuracy: true, maximumAge: 10_000, timeout: 10_000 },
     );
