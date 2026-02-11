@@ -6,8 +6,7 @@ async function refreshMenus() {
   const token = process.env.MENU_REFRESH_TOKEN;
   if (!token) throw new Error("MENU_REFRESH_TOKEN puuttuu");
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   await fetch(`${baseUrl}/api?token=${token}`, {
     method: "POST",

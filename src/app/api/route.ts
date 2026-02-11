@@ -91,29 +91,38 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     withUrl.map((r) => r.name),
   );
 
-const entries: ResultEntry[] = [];
+  const entries: ResultEntry[] = [];
+  const BATCH_SIZE = 3;
 
-for (const r of withUrl) {
-  try {
-    let html = await fetchRenderedHtml(r.url);
+  async function processRestaurant(
+    r: RestaurantBrief & { url: string },
+  ): Promise<ResultEntry> {
+    try {
+      let html = await fetchRenderedHtml(r.url);
 
-    if (html.length > 30000) {
-      html = html.slice(0, 30000);
+      if (html.length > 30000) {
+        html = html.slice(0, 30000);
+      }
+
+      const menu = await extractMenu(client, r.name, r.url, html);
+      await insertMenu(r.id, menu);
+
+      return { id: r.id, name: r.name, url: r.url, menu };
+    } catch (e: unknown) {
+      return {
+        id: r.id,
+        name: r.name,
+        url: r.url,
+        error: e instanceof Error ? e.message : "unknown error",
+      };
     }
-
-    const menu = await extractMenu(client, r.name, r.url, html);
-    await insertMenu(r.id, menu);
-
-    entries.push({ id: r.id, name: r.name, url: r.url, menu });
-  } catch (e: unknown) {
-    entries.push({
-      id: r.id,
-      name: r.name,
-      url: r.url,
-      error: e instanceof Error ? e.message : "unknown error",
-    });
   }
-}
+
+  for (let i = 0; i < withUrl.length; i += BATCH_SIZE) {
+    const batch = withUrl.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(processRestaurant));
+    entries.push(...batchResults);
+  }
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });
