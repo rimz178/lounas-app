@@ -148,9 +148,36 @@ export async function POST(req: Request) {
 
   const payload = await req
     .json()
-    .catch(() => ({}) as { restaurantIds?: string[] });
-  const ids = Array.isArray(payload.restaurantIds)
-    ? payload.restaurantIds
-    : undefined;
+    .catch(() => ({}) as { restaurantIds?: unknown });
+
+  let ids: string[] | undefined;
+
+  if (Array.isArray(payload.restaurantIds)) {
+    const rawIds = payload.restaurantIds;
+
+    if (rawIds.length > 100) {
+      return Response.json(
+        { ok: false, error: "Too many restaurantIds provided (max 100)." },
+        { status: 400 },
+      );
+    }
+
+    const normalizedIds = rawIds
+      .filter((id) => typeof id === "string")
+      .map((id) => (id as string).trim())
+      .filter((id) => id.length > 0);
+
+    // If there were invalid types in the array, reject the request.
+    if (normalizedIds.length !== rawIds.length) {
+      return Response.json(
+        { ok: false, error: "restaurantIds must be an array of non-empty strings." },
+        { status: 400 },
+      );
+    }
+
+    ids = normalizedIds;
+  } else {
+    ids = undefined;
+  }
   return runRefresh(client, ids);
 }
