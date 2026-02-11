@@ -91,31 +91,29 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     withUrl.map((r) => r.name),
   );
 
-  const entries = await Promise.all(
-    withUrl.map(async (r): Promise<ResultEntry> => {
-      try {
-        let html = await fetchRenderedHtml(r.url);
-        if (html.length > 30000) {
-          html = html.slice(0, 30000);
-          console.log(`HTML trimmattu (${r.name}), pituus:`, html.length);
-        }
-        console.log(`HTML haettu (${r.name}):`, html?.slice(0, 200));
-        const menu = await extractMenu(client, r.name, r.url, html);
-        console.log(`Menu generoitu (${r.name}):`, menu);
-        await insertMenu(r.id, menu);
-        console.log(`Menu tallennettu (${r.name})`);
-        return { id: r.id, name: r.name, url: r.url, menu };
-      } catch (e: unknown) {
-        console.error(`Virhe (${r.name}):`, e);
-        return {
-          id: r.id,
-          name: r.name,
-          url: r.url,
-          error: e instanceof Error ? e.message : "unknown error",
-        };
-      }
-    }),
-  );
+const entries: ResultEntry[] = [];
+
+for (const r of withUrl) {
+  try {
+    let html = await fetchRenderedHtml(r.url);
+
+    if (html.length > 30000) {
+      html = html.slice(0, 30000);
+    }
+
+    const menu = await extractMenu(client, r.name, r.url, html);
+    await insertMenu(r.id, menu);
+
+    entries.push({ id: r.id, name: r.name, url: r.url, menu });
+  } catch (e: unknown) {
+    entries.push({
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      error: e instanceof Error ? e.message : "unknown error",
+    });
+  }
+}
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });
