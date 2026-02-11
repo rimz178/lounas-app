@@ -2,7 +2,6 @@ import { supabase } from "../lib/supabaseClient";
 import type { RestaurantBrief } from "./types";
 
 export async function getRestaurants() {
-  // Jos haluat tyypit suoraan, rajaa valinnat yhteiseen tyyppiin
   return supabase
     .from("ravintolat")
     .select("id, name, url")
