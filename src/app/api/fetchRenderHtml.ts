@@ -10,14 +10,11 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
       timeout: 90_000, 
     });
 
-    await page.waitForTimeout(4000);
-
+   page.waitForLoadState("networkidle");
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight);
     });
-
-    await page.waitForTimeout(2000);
-
+    await page.waitForLoadState("networkidle");
     const text = await page.evaluate(() => {
       return document.body?.innerText ?? "";
     });
