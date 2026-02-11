@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { supabase } from "../lib/supabaseClient";
+import { supabaseServer as supabase } from "../lib/supabaseClient";
 import { insertMenu } from "../service/menus";
 import type { RestaurantBrief } from "../service/types";
 import { fetchRenderedHtml } from "./fetchRenderHtml";
