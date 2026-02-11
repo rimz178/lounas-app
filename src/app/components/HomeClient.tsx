@@ -18,7 +18,7 @@ export default function HomeClient() {
     setRefreshResult(null);
     try {
       const res = await fetch(
-        "/api?token=proj-MmRkYzE3ZTAtY2YwYS00Y2I4LWI3YjctY2E3ZDM2ZjI2ZDYzXzE2OTY0MTc1OTg5NTRfODk2MzkzNw",
+        "/",
         { method: "POST" },
       );
       const data = await res.json();
