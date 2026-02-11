@@ -1,9 +1,14 @@
 import { chromium } from "playwright";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const TIMEOUT_MS = process.env.PLAYWRIGHT_TIMEOUT_MS
-  ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT_MS, 10)
-  : DEFAULT_TIMEOUT_MS;
+const parseTimeout = (): number => {
+  const envValue = process.env.PLAYWRIGHT_TIMEOUT_MS;
+  if (!envValue) return DEFAULT_TIMEOUT_MS;
+
+  const parsed = Number.parseInt(envValue, 10);
+  return parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
+};
+const TIMEOUT_MS = parseTimeout();
 
 export async function fetchRenderedHtml(url: string): Promise<string> {
   const browser = await chromium.launch({ headless: true });
