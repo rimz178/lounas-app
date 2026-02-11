@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { supabaseServer as supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import { insertMenu } from "../service/menus";
 import type { RestaurantBrief } from "../service/types";
 import { fetchRenderedHtml } from "./fetchRenderHtml";
@@ -91,29 +91,29 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     withUrl.map((r) => r.name),
   );
 
-  const entries: ResultEntry[] = [];
+const entries: ResultEntry[] = [];
 
-  for (const r of withUrl) {
-    try {
-      let html = await fetchRenderedHtml(r.url);
+for (const r of withUrl) {
+  try {
+    let html = await fetchRenderedHtml(r.url);
 
-      if (html.length > 30000) {
-        html = html.slice(0, 30000);
-      }
-
-      const menu = await extractMenu(client, r.name, r.url, html);
-      await insertMenu(r.id, menu);
-
-      entries.push({ id: r.id, name: r.name, url: r.url, menu });
-    } catch (e: unknown) {
-      entries.push({
-        id: r.id,
-        name: r.name,
-        url: r.url,
-        error: e instanceof Error ? e.message : "unknown error",
-      });
+    if (html.length > 30000) {
+      html = html.slice(0, 30000);
     }
+
+    const menu = await extractMenu(client, r.name, r.url, html);
+    await insertMenu(r.id, menu);
+
+    entries.push({ id: r.id, name: r.name, url: r.url, menu });
+  } catch (e: unknown) {
+    entries.push({
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      error: e instanceof Error ? e.message : "unknown error",
+    });
   }
+}
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });
@@ -148,36 +148,9 @@ export async function POST(req: Request) {
 
   const payload = await req
     .json()
-    .catch(() => ({}) as { restaurantIds?: unknown });
-
-  let ids: string[] | undefined;
-
-  if (Array.isArray(payload.restaurantIds)) {
-    const rawIds = payload.restaurantIds;
-
-    if (rawIds.length > 100) {
-      return Response.json(
-        { ok: false, error: "Too many restaurantIds provided (max 100)." },
-        { status: 400 },
-      );
-    }
-
-    const normalizedIds = rawIds
-      .filter((id) => typeof id === "string")
-      .map((id) => (id as string).trim())
-      .filter((id) => id.length > 0);
-
-    // If there were invalid types in the array, reject the request.
-    if (normalizedIds.length !== rawIds.length) {
-      return Response.json(
-        { ok: false, error: "restaurantIds must be an array of non-empty strings." },
-        { status: 400 },
-      );
-    }
-
-    ids = normalizedIds;
-  } else {
-    ids = undefined;
-  }
+    .catch(() => ({}) as { restaurantIds?: string[] });
+  const ids = Array.isArray(payload.restaurantIds)
+    ? payload.restaurantIds
+    : undefined;
   return runRefresh(client, ids);
 }
