@@ -7,18 +7,27 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
   try {
     await page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: 90_000, 
+      timeout: 90_000,
     });
 
-   page.waitForLoadState("networkidle");
+  
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 10_000 });
+    } catch {
+      console.warn("networkidle timeout (first) for", url);
+    }
+
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight);
     });
-    await page.waitForLoadState("networkidle");
-    const text = await page.evaluate(() => {
-      return document.body?.innerText ?? "";
-    });
 
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 10_000 });
+    } catch {
+      console.warn("networkidle timeout (second) for", url);
+    }
+
+    const text = await page.evaluate(() => document.body?.innerText ?? "");
     return text;
   } finally {
     await browser.close();
