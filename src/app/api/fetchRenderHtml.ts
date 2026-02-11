@@ -7,7 +7,7 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
   try {
     await page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: 90_000, 
+      timeout: 90_000,
     });
 
     await page.waitForTimeout(4000);

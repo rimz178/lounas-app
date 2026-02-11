@@ -170,7 +170,10 @@ export async function POST(req: Request) {
     // If there were invalid types in the array, reject the request.
     if (normalizedIds.length !== rawIds.length) {
       return Response.json(
-        { ok: false, error: "restaurantIds must be an array of non-empty strings." },
+        {
+          ok: false,
+          error: "restaurantIds must be an array of non-empty strings.",
+        },
         { status: 400 },
       );
     }
