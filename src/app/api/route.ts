@@ -123,7 +123,7 @@ export async function GET(req: Request) {
   if (!isAuthorized(req))
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !apiKey.startsWith("sk-")) {
+  if (!apiKey) {
     return Response.json(
       { ok: false, error: "OPENAI_API_KEY puuttuu tai on virheellinen" },
       { status: 500 },
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !apiKey.startsWith("sk-")) {
+  if (!apiKey) {
     return Response.json(
       { ok: false, error: "OPENAI_API_KEY puuttuu tai on virheellinen" },
       { status: 500 },
@@ -170,7 +170,10 @@ export async function POST(req: Request) {
     // If there were invalid types in the array, reject the request.
     if (normalizedIds.length !== rawIds.length) {
       return Response.json(
-        { ok: false, error: "restaurantIds must be an array of non-empty strings." },
+        {
+          ok: false,
+          error: "restaurantIds must be an array of non-empty strings.",
+        },
         { status: 400 },
       );
     }
