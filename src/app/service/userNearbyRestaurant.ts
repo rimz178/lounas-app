@@ -74,7 +74,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
     lng: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchRestaurantsRef = useRef<() => Promise<void>>();
 
   const fetchRestaurants = useCallback(async () => {
@@ -106,7 +106,9 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(false);
   }, []);
 
-  fetchRestaurantsRef.current = fetchRestaurants;
+  useEffect(() => {
+    fetchRestaurantsRef.current = fetchRestaurants;
+  }, [fetchRestaurants]);
 
   const debouncedFetchRestaurants = useCallback(() => {
     if (debounceTimerRef.current) {
