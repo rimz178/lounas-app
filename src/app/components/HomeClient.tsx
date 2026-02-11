@@ -17,13 +17,24 @@ export default function HomeClient() {
     setRefreshing(true);
     setRefreshResult(null);
     try {
-      const res = await fetch(
-        "/",
-        { method: "POST" },
-      );
+      const token = process.env.NEXT_PUBLIC_MENU_REFRESH_TOKEN;
+
+      const res = await fetch("/api", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          restaurantIds: restaurants.map((r) => r.id),
+        }),
+      });
+
       const data = await res.json();
-      setRefreshResult(JSON.stringify(data));
-      reload();
+      setRefreshResult(JSON.stringify(data, null, 2));
+      if (data.ok) {
+        reload(); 
+      }
     } catch (e) {
       setRefreshResult("Virhe: " + (e as Error).message);
     }
