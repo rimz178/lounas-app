@@ -104,6 +104,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(false);
   }, []);
 
+  // fetchRestaurants is stable (empty deps in useCallback), but included to satisfy exhaustive-deps
   useEffect(() => {
     fetchRestaurants();
   }, [fetchRestaurants]);
