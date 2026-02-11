@@ -1,40 +1,39 @@
 import { supabase } from "../lib/supabaseClient";
+import type { RestaurantBrief } from "./types";
 
 export async function getRestaurants() {
-  return supabase.from("ravintolat").select("id, name, osoite");
+  return supabase
+    .from("ravintolat")
+    .select("id, name, url")
+    .returns<RestaurantBrief[]>();
 }
 
-
-export async function getLatestMenusByRestaurant(restaurantIds: string[]) {
-  if (!restaurantIds.length) return {} as Record<string, string>;
+export async function getLatestMenusByRestaurant(
+  ids: string[],
+): Promise<Record<string, string>> {
+  if (!ids.length) return {};
 
   const { data, error } = await supabase
     .from("menus")
-    .select("*")
-    .in("restaurant_id", restaurantIds)
+    .select("restaurant_id, menu_text, created_at")
+    .in("restaurant_id", ids)
     .order("created_at", { ascending: false });
 
-  if (error || !Array.isArray(data)) {
-    console.warn("Supabase menus error:", error);
+  if (error) {
+    console.warn("Supabase menus error:", error.message);
     return {};
   }
 
+  const rows = (data ?? []) as Array<{
+    restaurant_id: string | null;
+    menu_text: string | null;
+    created_at: string | null;
+  }>;
   const map: Record<string, string> = {};
-  for (const row of data as Array<Record<string, unknown>>) {
-    const rid =
-      typeof row.restaurant_id === "string"
-        ? row.restaurant_id
-        : typeof row.ravintola_id === "string"
-          ? row.ravintola_id
-          : null;
-    const text =
-      typeof row.menu_text === "string"
-        ? row.menu_text
-        : typeof row.text === "string"
-          ? row.text
-          : undefined;
-    if (!rid || !text) continue;
-    if (!(rid in map)) map[rid] = text; 
+  for (const id of ids) {
+    const row = rows.find((r) => r.restaurant_id === id);
+    const text = row?.menu_text?.trim();
+    if (text) map[id] = text;
   }
   return map;
 }
