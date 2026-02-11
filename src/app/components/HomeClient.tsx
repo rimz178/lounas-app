@@ -79,9 +79,7 @@ export default function HomeClient() {
       >
         {refreshing ? "Päivitetään..." : "Päivitä lounaslistat nyt"}
       </button>
-      {refreshResult && (
-        <pre className="mt-2 text-xs bg-gray-100 p-2 rounded"></pre>
-      )}
+      
       <RestaurantMap
         selectedRestaurantId={selectedRestaurantId}
         onSelectRestaurantId={setSelectedRestaurantId}
