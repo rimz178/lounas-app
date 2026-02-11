@@ -5,8 +5,11 @@ const parseTimeout = (): number => {
   const envValue = process.env.PLAYWRIGHT_TIMEOUT_MS;
   if (!envValue) return DEFAULT_TIMEOUT_MS;
 
-  const parsed = Number.parseInt(envValue, 10);
-  return parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
+  const parsed = Number(envValue);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return parsed;
 };
 const TIMEOUT_MS = parseTimeout();
 
