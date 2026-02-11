@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
 import type { Restaurant } from "./types";
@@ -74,6 +74,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
     lng: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchRestaurants = useCallback(async () => {
     setLoading(true);
@@ -104,6 +105,15 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(false);
   }, []);
 
+  const debouncedFetchRestaurants = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchRestaurants();
+    }, 300);
+  }, [fetchRestaurants]);
+
   useEffect(() => {
     fetchRestaurants();
   }, [fetchRestaurants]);
@@ -116,7 +126,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "INSERT", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat INSERT:", payload);
-          fetchRestaurants();
+          debouncedFetchRestaurants();
         },
       )
       .on(
@@ -124,7 +134,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "UPDATE", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat UPDATE:", payload);
-          fetchRestaurants();
+          debouncedFetchRestaurants();
         },
       )
       .on(
@@ -132,7 +142,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "DELETE", schema: "public", table: "ravintolat" },
         (payload) => {
           console.log("ravintolat DELETE:", payload);
-          fetchRestaurants();
+          debouncedFetchRestaurants();
         },
       )
       .on(
@@ -140,7 +150,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "INSERT", schema: "public", table: "menus" },
         (payload) => {
           console.log("menus INSERT:", payload);
-          fetchRestaurants();
+          debouncedFetchRestaurants();
         },
       )
       .on(
@@ -148,7 +158,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
         { event: "UPDATE", schema: "public", table: "menus" },
         (payload) => {
           console.log("menus UPDATE:", payload);
-          fetchRestaurants();
+          debouncedFetchRestaurants();
         },
       )
       .subscribe((status) => {
@@ -157,8 +167,11 @@ export function useNearbyRestaurants(radiusKm = 2) {
 
     return () => {
       supabase.removeChannel(channel);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
     };
-  }, [fetchRestaurants]);
+  }, [debouncedFetchRestaurants]);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
