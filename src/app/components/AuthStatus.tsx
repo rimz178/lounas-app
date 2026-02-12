@@ -9,7 +9,6 @@ export default function AuthStatus() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
   useEffect(() => {
-    // Alkuperäinen käyttäjä sessiosta
     supabase.auth
       .getUser()
       .then(({ data, error }) => {

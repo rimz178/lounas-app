@@ -2,54 +2,91 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabaseClient";
+import type { User } from "@supabase/supabase-js";
 
-type Props = {
-  refreshMenus: () => Promise<void>;
-};
-
-const ALLOWED_EMAILS = ["riku.mikkonen5@gmail.com"];
-
-function isAllowed(user: User | null) {
+async function fetchIsAdmin(user: User | null) {
   if (!user) return false;
-  const email = user.email ?? "";
-  return ALLOWED_EMAILS.includes(email);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.warn("profiles error", error.message);
+    return false;
+  }
+  return data?.role === "admin";
 }
 
-export default function AdminControls({ refreshMenus }: Props) {
+export default function AdminControls() {
   const [allowed, setAllowed] = useState<boolean | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setAllowed(isAllowed(data.user ?? null)))
-      .catch(() => setAllowed(false));
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setAllowed(await fetchIsAdmin(user ?? null));
+    }
+
+    void init();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAllowed(isAllowed(session?.user ?? null));
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setAllowed(await fetchIsAdmin(session?.user ?? null));
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Latausvaiheessa ei näytetä mitään
   if (allowed !== true) return null;
+
+  async function handleRefresh() {
+    setLoading(true);
+    setError(null);
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error || !session) {
+      setError("Et ole kirjautunut");
+      setLoading(false);
+      return;
+    }
+
+    const res = await fetch("/api", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Päivitys epäonnistui");
+    }
+
+    setLoading(false);
+  }
 
   return (
     <div className="space-y-2">
-      <form action={refreshMenus}>
-        <button
-          type="submit"
-          className="border rounded px-2 py-1 bg-blue-600 text-white"
-        >
-          Päivitä lounaslistat nyt
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={handleRefresh}
+        disabled={loading}
+        className="border rounded px-2 py-1 bg-blue-600 text-white disabled:opacity-60"
+      >
+        {loading ? "Päivitetään..." : "Päivitä lounaslistat nyt"}
+      </button>
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
