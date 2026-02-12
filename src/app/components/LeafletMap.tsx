@@ -171,6 +171,13 @@ export default function LeafletMap({
             >
               <Popup>
                 <strong>{r.name}</strong>
+
+                {typeof r.averageRating === "number" && (
+                  <div style={{ margin: "4px 2px", fontSize: 12 }}>
+                    Arvosana {r.averageRating.toFixed(1)}/5 ({r.reviewCount ?? 0})
+                  </div>
+                )}
+
                 {renderMenuList(r.menu_text, 6, r.id)}
                 <a href={r.url} target="_blank" rel="noreferrer">
                   Avaa ravintolan sivut

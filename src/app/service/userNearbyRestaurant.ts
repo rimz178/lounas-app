@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
+import { getReviewStatsByRestaurant } from "./reviews";
 import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
@@ -92,13 +93,21 @@ export function useNearbyRestaurants(radiusKm = 2) {
     try {
       const ids = parsed.map((r) => r.id);
       const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-      const merged = parsed.map((r) => ({
-        ...r,
-        menu_text: menusByRestaurant[r.id] ?? r.menu_text,
-      }));
+      const reviewStats = await getReviewStatsByRestaurant(ids);
+
+      const merged = parsed.map((r) => {
+        const stats = reviewStats[r.id];
+        return {
+          ...r,
+          menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+          averageRating: stats?.average,
+          reviewCount: stats?.count ?? 0,
+        };
+      });
+
       setRestaurants(merged);
     } catch (e) {
-      console.warn("Menus fetch failed:", e);
+      console.warn("Menus or reviews fetch failed:", e);
       setRestaurants(parsed);
     }
     setLoading(false);

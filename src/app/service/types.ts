@@ -5,6 +5,8 @@ export interface Restaurant {
   lng: number;
   url: string;
   menu_text?: string;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 export type RestaurantBrief = {
