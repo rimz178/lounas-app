@@ -35,8 +35,6 @@ export default function LoginPage() {
       router.push("/");
       return;
     }
-
-    // mode === "signup"
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -61,6 +59,13 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-4 border rounded p-6 bg-black"
       >
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="text-sm underline"
+        >
+          Takaisin etusivulle
+        </button>
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-xl font-semibold">
             {mode === "login" ? "Kirjaudu sisään" : "Luo uusi tunnus"}
