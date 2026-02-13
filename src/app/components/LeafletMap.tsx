@@ -5,8 +5,6 @@ import { useEffect, useMemo, useRef } from "react";
 import L, { type LatLngExpression } from "leaflet";
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-
-import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
 import type { Restaurant } from "../service/types";
 
 const leafletVersion = "1.9.4";
@@ -115,11 +113,9 @@ export default function LeafletMap({
   restaurants,
   userLocation,
 }: Props) {
-  const { restaurants: hookRestaurants, userLocation: hookUserLocation } =
-    useNearbyRestaurants();
-
-  const restaurantsToUse = restaurants ?? hookRestaurants;
-  const userLocationToUse = userLocation ?? hookUserLocation;
+  // Käytetään vain propseja (HomeClient huolehtii hausta)
+  const restaurantsToUse = restaurants;
+  const userLocationToUse = userLocation ?? null;
 
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const selectedTarget = useMemo(() => {
@@ -174,7 +170,8 @@ export default function LeafletMap({
 
                 {typeof r.averageRating === "number" && (
                   <div style={{ margin: "4px 2px", fontSize: 12 }}>
-                    Arvosana {r.averageRating.toFixed(1)}/5 ({r.reviewCount ?? 0})
+                    Arvosana {r.averageRating.toFixed(1)}/5 (
+                    {r.reviewCount ?? 0})
                   </div>
                 )}
 

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
-import { getReviewStatsByRestaurant } from "./reviews";
+import {
+  getReviewStatsByRestaurant,
+  getUserReviewsByRestaurant,
+} from "./reviews";
 import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
@@ -75,98 +78,70 @@ export function useNearbyRestaurants(radiusKm = 2) {
     lng: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const fetchingRef = useRef(false);
+  const pendingRef = useRef(false);
 
   const fetchRestaurants = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("ravintolat").select("*");
-    if (error || !Array.isArray(data)) {
-      console.warn("Supabase error:", error?.message);
-      setRestaurants([]);
-      setLoading(false);
+    if (fetchingRef.current) {
+      pendingRef.current = true;
       return;
     }
 
-    const parsed = (data ?? [])
-      .map(toRestaurant)
-      .filter((r): r is Restaurant => r !== null);
+    fetchingRef.current = true;
+    setLoading(true);
 
     try {
-      const ids = parsed.map((r) => r.id);
-      const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-      const reviewStats = await getReviewStatsByRestaurant(ids);
+      const { data, error } = await supabase.from("ravintolat").select("*");
+      if (error || !Array.isArray(data)) {
+        console.warn("Supabase error:", error?.message);
+        setRestaurants([]);
+        return;
+      }
 
-      const merged = parsed.map((r) => {
-        const stats = reviewStats[r.id];
-        return {
-          ...r,
-          menu_text: menusByRestaurant[r.id] ?? r.menu_text,
-          averageRating: stats?.average,
-          reviewCount: stats?.count ?? 0,
-        };
-      });
+      const parsed = (data ?? [])
+        .map(toRestaurant)
+        .filter((r): r is Restaurant => r !== null);
 
-      setRestaurants(merged);
-    } catch (e) {
-      console.warn("Menus or reviews fetch failed:", e);
-      setRestaurants(parsed);
+      try {
+        const ids = parsed.map((r) => r.id);
+
+        const [menusByRestaurant, reviewStats, myReviews] = await Promise.all([
+          getLatestMenusByRestaurant(ids),
+          getReviewStatsByRestaurant(ids),
+          getUserReviewsByRestaurant(ids),
+        ]);
+
+        const merged = parsed.map((r) => {
+          const stats = reviewStats[r.id];
+          const mine = myReviews[r.id];
+          return {
+            ...r,
+            menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+            averageRating: stats?.average,
+            reviewCount: stats?.count ?? 0,
+            myRating: mine?.rating,
+            myComment: mine?.comment ?? null,
+          };
+        });
+
+        setRestaurants(merged);
+      } catch (e) {
+        console.warn("Menus or reviews fetch failed:", e);
+        setRestaurants(parsed);
+      }
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        void fetchRestaurants();
+      }
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchRestaurants();
-  }, [fetchRestaurants]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("lounas-app-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat INSERT:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat UPDATE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat DELETE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "menus" },
-        (payload) => {
-          console.log("menus INSERT:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "menus" },
-        (payload) => {
-          console.log("menus UPDATE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .subscribe((status) => {
-        console.log("Realtime status:", status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchRestaurants]);
 
   useEffect(() => {

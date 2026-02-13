@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import type { Restaurant } from "../service/types";
-import { insertReview } from "../service/reviews";
+import { insertReview, deleteReview } from "../service/reviews";
 
 export default function RestaurantList({
   restaurants,
-  reload,
 }: {
   restaurants: Restaurant[];
-  reload?: () => Promise<void> | void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
@@ -27,15 +25,37 @@ export default function RestaurantList({
     setStatus(null);
     try {
       await insertReview(restaurantId, rating, comment);
-      if (reload) {
-        await reload();
-      }
-      setStatus("Kiitos arvostelusta!");
+
+      setStatus("Arvostelu tallennettu!");
       setComment("");
       setActiveId(null);
     } catch (err) {
       setStatus(
         err instanceof Error ? err.message : "Arvostelun tallennus epäonnistui",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(restaurantId: string) {
+    setSubmitting(true);
+    setStatus(null);
+    try {
+      await deleteReview(restaurantId);
+
+      // if (reload) {
+      //   void reload();
+      // }
+
+      setStatus("Arvostelusi on poistettu.");
+      setComment("");
+      setActiveId(null);
+    } catch (err) {
+      setStatus(
+        err instanceof Error
+          ? err.message
+          : "Arvostelun poistaminen epäonnistui",
       );
     } finally {
       setSubmitting(false);
@@ -64,6 +84,15 @@ export default function RestaurantList({
               ) : (
                 <div className="text-sm text-gray-400">
                   Ei arvosteluja vielä
+                </div>
+              )}
+
+              {typeof r.myRating === "number" && (
+                <div className="mt-1 text-sm text-green-300">
+                  Oma arvostelusi: {r.myRating}/5
+                  {r.myComment && (
+                    <span className="text-gray-200"> — {r.myComment}</span>
+                  )}
                 </div>
               )}
 
@@ -107,13 +136,13 @@ export default function RestaurantList({
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       type="submit"
                       disabled={submitting}
                       className="border rounded px-3 py-1 bg-blue-600 text-white text-sm disabled:opacity-60"
                     >
-                      {submitting ? "Tallennetaan..." : "Lähetä arvostelu"}
+                      {submitting ? "Tallennetaan..." : "Tallenna arvostelu"}
                     </button>
                     <button
                       type="button"
@@ -121,6 +150,14 @@ export default function RestaurantList({
                       className="border rounded px-3 py-1 text-sm"
                     >
                       Peruuta
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(r.id)}
+                      disabled={submitting}
+                      className="border rounded px-3 py-1 text-sm text-red-600"
+                    >
+                      Poista arvosteluni
                     </button>
                   </div>
                   {status && (
@@ -133,10 +170,14 @@ export default function RestaurantList({
                   onClick={() => {
                     setActiveId(r.id);
                     setStatus(null);
+                    setRating(r.myRating ?? 5);
+                    setComment(r.myComment ?? "");
                   }}
                   className="border rounded px-3 py-1 text-sm bg-gray-800 text-white"
                 >
-                  Jätä arvostelu
+                  {typeof r.myRating === "number"
+                    ? "Muokkaa arvosteluani"
+                    : "Jätä arvostelu"}
                 </button>
               )}
             </div>

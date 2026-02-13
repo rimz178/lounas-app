@@ -7,6 +7,8 @@ export interface Restaurant {
   menu_text?: string;
   averageRating?: number;
   reviewCount?: number;
+  myRating?: number;
+  myComment?: string | null;
 }
 
 export type RestaurantBrief = {

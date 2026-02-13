@@ -52,20 +52,76 @@ export async function insertReview(
     throw new Error("Sinun pitää olla kirjautunut sisään.");
   }
 
-  const { error: insertError } = await supabase.from("reviews").insert({
-    restaurant_id: restaurantId,
-    user_id: user.id,
-    rating,
-    comment: comment.trim() || null,
-  });
+  const { error: upsertError } = await supabase.from("reviews").upsert(
+    {
+      restaurant_id: restaurantId,
+      user_id: user.id,
+      rating,
+      comment: comment.trim() || null,
+    },
+    { onConflict: "restaurant_id,user_id" },
+  );
 
-  if (insertError) {
-    if (
-      insertError.code === "23505" ||
-      insertError.message?.includes("reviews_unique_user_per_restaurant")
-    ) {
-      throw new Error("Olet jo arvostellut tämän ravintolan.");
-    }
-    throw new Error(insertError.message);
+  if (upsertError) {
+    throw new Error(upsertError.message);
   }
+}
+
+export async function deleteReview(restaurantId: string) {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    throw new Error("Sinun pitää olla kirjautunut sisään.");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("reviews")
+    .delete()
+    .eq("restaurant_id", restaurantId)
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+}
+
+export async function getUserReviewsByRestaurant(
+  ids: string[],
+): Promise<Record<string, { rating: number; comment: string | null }>> {
+  if (!ids.length) return {};
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) return {};
+
+  const { data, error: reviewsError } = await supabase
+    .from("reviews")
+    .select("restaurant_id, rating, comment")
+    .eq("user_id", user.id)
+    .in("restaurant_id", ids);
+
+  if (reviewsError || !data) {
+    console.warn("my reviews error:", reviewsError?.message);
+    return {};
+  }
+
+  const result: Record<string, { rating: number; comment: string | null }> = {};
+  for (const row of data as {
+    restaurant_id: string | null;
+    rating: number | null;
+    comment: string | null;
+  }[]) {
+    if (!row.restaurant_id || row.rating == null) continue;
+    result[row.restaurant_id] = {
+      rating: row.rating,
+      comment: row.comment,
+    };
+  }
+  return result;
 }
