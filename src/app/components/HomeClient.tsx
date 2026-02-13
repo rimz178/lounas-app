@@ -2,14 +2,14 @@
 import { useState } from "react";
 import RestaurantMap from "./Map";
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
-import RestaurantList from "./restaurantList"
+import RestaurantList from "./restaurantList";
 
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     string | undefined
   >(undefined);
   const [radius, setRadius] = useState(2);
-  const { restaurants, userLocation} = useNearbyRestaurants(radius);
+  const { restaurants, userLocation, reload } = useNearbyRestaurants(radius);
 
   return (
     <>
@@ -47,7 +47,7 @@ export default function HomeClient() {
         restaurants={restaurants}
         userLocation={userLocation}
       />
-      <RestaurantList restaurants={restaurants} />
+      <RestaurantList restaurants={restaurants} reload={reload} />
     </>
   );
 }

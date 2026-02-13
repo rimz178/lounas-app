@@ -3,7 +3,8 @@ import { supabase } from "../lib/supabaseClient";
 import { insertMenu } from "../service/menus";
 import type { RestaurantBrief } from "../service/types";
 import { fetchRenderedHtml } from "./fetchRenderHtml";
-
+import { createClient } from "@supabase/supabase-js";
+import pLimit from "p-limit";
 type ResultEntry = {
   id: string;
   name: string;
@@ -59,14 +60,6 @@ async function extractMenu(
   return completion.choices?.[0]?.message?.content ?? "";
 }
 
-function isAuthorized(req: Request): boolean {
-  const authHeader = req.headers.get("authorization");
-  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const tokenParam = new URL(req.url).searchParams.get("token");
-  const token = bearer ?? tokenParam;
-  return !!token && token === process.env.MENU_REFRESH_TOKEN;
-}
-
 async function runRefresh(client: OpenAI, ids?: string[]) {
   const base = supabase
     .from("ravintolat")
@@ -91,37 +84,48 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     withUrl.map((r) => r.name),
   );
 
-const entries: ResultEntry[] = [];
+  const entries: ResultEntry[] = [];
+  const limit = pLimit(5); 
 
-for (const r of withUrl) {
-  try {
-    let html = await fetchRenderedHtml(r.url);
+  const tasks = withUrl.map((r) =>
+    limit(async () => {
+      try {
+        let html = await fetchRenderedHtml(r.url);
 
-    if (html.length > 30000) {
-      html = html.slice(0, 30000);
-    }
+        if (html.length > 30000) {
+          html = html.slice(0, 30000);
+        }
 
-    const menu = await extractMenu(client, r.name, r.url, html);
-    await insertMenu(r.id, menu);
+        const menu = await extractMenu(client, r.name, r.url, html);
+        await insertMenu(r.id, menu);
 
-    entries.push({ id: r.id, name: r.name, url: r.url, menu });
-  } catch (e: unknown) {
-    entries.push({
-      id: r.id,
-      name: r.name,
-      url: r.url,
-      error: e instanceof Error ? e.message : "unknown error",
-    });
-  }
-}
+        entries.push({ id: r.id, name: r.name, url: r.url, menu });
+      } catch (e: unknown) {
+        entries.push({
+          id: r.id,
+          name: r.name,
+          url: r.url,
+          error: e instanceof Error ? e.message : "unknown error",
+        });
+      }
+    }),
+  );
+
+  await Promise.all(tasks);
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req))
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  const check = await requireAdmin(req);
+  if (!check.ok) {
+    return Response.json(
+      { ok: false, error: "Forbidden" },
+      { status: check.status },
+    );
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !apiKey.startsWith("sk-")) {
     return Response.json(
@@ -134,8 +138,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!isAuthorized(req))
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  const check = await requireAdmin(req);
+  if (!check.ok) {
+    return Response.json(
+      { ok: false, error: "Forbidden" },
+      { status: check.status },
+    );
+  }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !apiKey.startsWith("sk-")) {
@@ -153,4 +162,42 @@ export async function POST(req: Request) {
     ? payload.restaurantIds
     : undefined;
   return runRefresh(client, ids);
+}
+
+async function requireAdmin(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing Supabase env vars");
+    return { ok: false, status: 500 };
+  }
+
+  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: req.headers.get("Authorization") ?? "",
+      },
+    },
+  });
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabaseAuth.auth.getUser();
+
+  if (userError || !user) return { ok: false, status: 401 };
+
+  const { data: profile, error: profileError } = await supabaseAuth
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || profile?.role !== "admin") {
+    return { ok: false, status: 403 };
+  }
+
+  return { ok: true };
 }
