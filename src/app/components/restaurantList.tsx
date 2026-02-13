@@ -6,8 +6,10 @@ import { insertReview, deleteReview } from "../service/reviews";
 
 export default function RestaurantList({
   restaurants,
+  reload,
 }: {
   restaurants: Restaurant[];
+  reload?: () => Promise<void> | void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
@@ -25,6 +27,10 @@ export default function RestaurantList({
     setStatus(null);
     try {
       await insertReview(restaurantId, rating, comment);
+
+      if (reload) {
+        void reload(); // hae uudet tiedot taustalla
+      }
 
       setStatus("Arvostelu tallennettu!");
       setComment("");
@@ -44,9 +50,9 @@ export default function RestaurantList({
     try {
       await deleteReview(restaurantId);
 
-      // if (reload) {
-      //   void reload();
-      // }
+      if (reload) {
+        void reload();
+      }
 
       setStatus("Arvostelusi on poistettu.");
       setComment("");
