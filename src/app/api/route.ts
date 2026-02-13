@@ -4,7 +4,7 @@ import { insertMenu } from "../service/menus";
 import type { RestaurantBrief } from "../service/types";
 import { fetchRenderedHtml } from "./fetchRenderHtml";
 import { createClient } from "@supabase/supabase-js";
-
+import pLimit from "p-limit";
 type ResultEntry = {
   id: string;
   name: string;
@@ -85,28 +85,33 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
   );
 
   const entries: ResultEntry[] = [];
+  const limit = pLimit(5); 
 
-  for (const r of withUrl) {
-    try {
-      let html = await fetchRenderedHtml(r.url);
+  const tasks = withUrl.map((r) =>
+    limit(async () => {
+      try {
+        let html = await fetchRenderedHtml(r.url);
 
-      if (html.length > 30000) {
-        html = html.slice(0, 30000);
+        if (html.length > 30000) {
+          html = html.slice(0, 30000);
+        }
+
+        const menu = await extractMenu(client, r.name, r.url, html);
+        await insertMenu(r.id, menu);
+
+        entries.push({ id: r.id, name: r.name, url: r.url, menu });
+      } catch (e: unknown) {
+        entries.push({
+          id: r.id,
+          name: r.name,
+          url: r.url,
+          error: e instanceof Error ? e.message : "unknown error",
+        });
       }
+    }),
+  );
 
-      const menu = await extractMenu(client, r.name, r.url, html);
-      await insertMenu(r.id, menu);
-
-      entries.push({ id: r.id, name: r.name, url: r.url, menu });
-    } catch (e: unknown) {
-      entries.push({
-        id: r.id,
-        name: r.name,
-        url: r.url,
-        error: e instanceof Error ? e.message : "unknown error",
-      });
-    }
-  }
+  await Promise.all(tasks);
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });

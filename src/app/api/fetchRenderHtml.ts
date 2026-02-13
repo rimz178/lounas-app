@@ -1,6 +1,13 @@
 import { chromium } from "playwright";
 
+const htmlCache = new Map<string, string>();
+
 export async function fetchRenderedHtml(url: string): Promise<string> {
+  const cachedHtml = htmlCache.get(url);
+  if (cachedHtml !== undefined) {
+    return cachedHtml;
+  }
+
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
@@ -10,7 +17,6 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
       timeout: 90_000,
     });
 
-  
     try {
       await page.waitForLoadState("networkidle", { timeout: 10_000 });
     } catch {
@@ -28,6 +34,7 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
     }
 
     const text = await page.evaluate(() => document.body?.innerText ?? "");
+    htmlCache.set(url, text);
     return text;
   } finally {
     await browser.close();

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { Restaurant } from "../service/types";
 import { insertReview, deleteReview } from "../service/reviews";
+import { memo } from "react";
 
-export default function RestaurantList({
+const RestaurantList = memo(function RestaurantList({
   restaurants,
   reload,
 }: {
@@ -192,4 +193,6 @@ export default function RestaurantList({
       </ul>
     </div>
   );
-}
+});
+
+export default RestaurantList;
