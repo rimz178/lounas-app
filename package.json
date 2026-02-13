@@ -29,6 +29,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "playwright": "^1.58.2",
+    "supabase": "^2.76.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
