@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.91.0",
+    "lru-cache": "^11.2.6",
     "next": "^16.1.6",
     "openai": "^6.17.0",
     "p-limit": "^7.3.0",
