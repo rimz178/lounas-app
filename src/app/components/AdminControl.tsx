@@ -14,7 +14,7 @@ export default function AdminControls() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ ids: [1, 2, 3] }), // Esimerkkidata
+          body: JSON.stringify({ ids: [1, 2, 3] }),
         },
       );
 

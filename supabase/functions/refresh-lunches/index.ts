@@ -7,7 +7,7 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { fetchRenderedHtml } from "./fetchRenderHtml.ts";
 import { runRefresh } from "./supabase.ts";
 import { OpenAI } from "https://deno.land/x/openai/mod.ts";
-
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const apiKey = Deno.env.get("OPENAI_API_KEY");
 if (!apiKey) {
@@ -15,7 +15,7 @@ if (!apiKey) {
 }
 const openai = new OpenAI(apiKey);
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -27,12 +27,19 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get("Authorization");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers }
-    );
+  // Tarkista, että Authorization-header on olemassa ja vastaa Service Role Keytä
+  if (!authHeader || authHeader !== `Bearer ${serviceRoleKey}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 
   try {
