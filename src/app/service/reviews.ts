@@ -1,41 +1,40 @@
-import { supabase } from "../lib/supabaseClient";
+;
 
-type ReviewRow = {
-  restaurant_id: string | null;
-  rating: number | null;
-};
+interface Review {
+  restaurant_id: string;
+  rating: number;
+  comment: string;
+}
 
 export async function getReviewStatsByRestaurant(
   ids: string[],
 ): Promise<Record<string, { average: number; count: number }>> {
   if (!ids.length) return {};
 
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("restaurant_id, rating")
-    .in("restaurant_id", ids);
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action: "getReviewStats", ids }),
+      }
+    );
 
-  if (error || !data) {
-    console.warn("reviews error:", error?.message);
+    if (!response.ok) {
+      console.warn("reviews error:", response.statusText);
+      return {};
+    }
+
+    const data = await response.json();
+    return data.stats || {};
+  } catch (error) {
+    console.error("Error fetching review stats:", error);
     return {};
   }
-
-  const sums: Record<string, { sum: number; count: number }> = {};
-  for (const row of data as ReviewRow[]) {
-    if (!row.restaurant_id || row.rating == null) continue;
-    const key = row.restaurant_id;
-    if (!sums[key]) sums[key] = { sum: 0, count: 0 };
-    sums[key].sum += row.rating;
-    sums[key].count += 1;
-  }
-
-  const result: Record<string, { average: number; count: number }> = {};
-  for (const [id, { sum, count }] of Object.entries(sums)) {
-    if (count > 0) {
-      result[id] = { average: sum / count, count };
-    }
-  }
-  return result;
 }
 
 export async function insertReview(
@@ -43,85 +42,161 @@ export async function insertReview(
   rating: number,
   comment: string,
 ) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: "insertReview",
+          data: {
+            restaurant_id: restaurantId,
+            rating,
+            comment: comment.trim() || null,
+          },
+        }),
+      }
+    );
 
-  if (error || !user) {
-    throw new Error("Sinun pitää olla kirjautunut sisään.");
-  }
+    if (!response.ok) {
+      throw new Error("Failed to insert review: " + response.statusText);
+    }
 
-  const { error: upsertError } = await supabase.from("reviews").upsert(
-    {
-      restaurant_id: restaurantId,
-      user_id: user.id,
-      rating,
-      comment: comment.trim() || null,
-    },
-    { onConflict: "restaurant_id,user_id" },
-  );
-
-  if (upsertError) {
-    throw new Error(upsertError.message);
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("Error inserting review:", error);
+    throw error;
   }
 }
 
 export async function deleteReview(restaurantId: string) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: "deleteReview",
+          data: { restaurant_id: restaurantId },
+        }),
+      }
+    );
 
-  if (error || !user) {
-    throw new Error("Sinun pitää olla kirjautunut sisään.");
-  }
+    if (!response.ok) {
+      throw new Error("Failed to delete review: " + response.statusText);
+    }
 
-  const { error: deleteError } = await supabase
-    .from("reviews")
-    .delete()
-    .eq("restaurant_id", restaurantId)
-    .eq("user_id", user.id);
-
-  if (deleteError) {
-    throw new Error(deleteError.message);
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    throw error;
   }
 }
 
 export async function getUserReviewsByRestaurant(
-  ids: string[],
-): Promise<Record<string, { rating: number; comment: string | null }>> {
-  if (!ids.length) return {};
+  restaurantId: string,
+  userId: string,
+) {
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: "getUserReviews",
+          data: { restaurant_id: restaurantId, user_id: userId },
+        }),
+      }
+    );
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    if (!response.ok) {
+      console.warn("Failed to fetch user reviews:", response.statusText);
+      return null;
+    }
 
-  if (error || !user) return {};
-
-  const { data, error: reviewsError } = await supabase
-    .from("reviews")
-    .select("restaurant_id, rating, comment")
-    .eq("user_id", user.id)
-    .in("restaurant_id", ids);
-
-  if (reviewsError || !data) {
-    console.warn("my reviews error:", reviewsError?.message);
-    return {};
+    const result = await response.json();
+    return result.reviews || null;
+  } catch (error) {
+    console.error("Error fetching user reviews:", error);
+    return null;
   }
+}
 
-  const result: Record<string, { rating: number; comment: string | null }> = {};
-  for (const row of data as {
-    restaurant_id: string | null;
-    rating: number | null;
-    comment: string | null;
-  }[]) {
-    if (!row.restaurant_id || row.rating == null) continue;
-    result[row.restaurant_id] = {
-      rating: row.rating,
-      comment: row.comment,
-    };
+export async function upsertReview(review: Review) {
+  try {
+    // Hae käyttäjätiedot Edge Functionin kautta
+    const userResponse = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ action: "getUser" }),
+      }
+    );
+
+    if (!userResponse.ok) {
+      throw new Error("Failed to fetch user data: " + userResponse.statusText);
+    }
+
+    const userResult = await userResponse.json();
+    const user = userResult.user;
+
+    if (!user) {
+      throw new Error("Sinun pitää olla kirjautunut sisään.");
+    }
+
+    // Suorita arvostelun lisääminen
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: "upsertReview",
+          data: {
+            restaurant_id: review.restaurant_id,
+            user_id: user.id,
+            rating: review.rating,
+            comment: review.comment.trim() || null,
+          },
+          options: { onConflict: "restaurant_id,user_id" },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to upsert review:", response.statusText);
+      return { error: response.statusText };
+    }
+
+    const result = await response.json();
+    return { error: result.error || null };
+  } catch (error) {
+    console.error("Error upserting review:", error);
+    return { error: error instanceof Error ? error.message : String(error) };
   }
-  return result;
 }

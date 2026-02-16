@@ -2,59 +2,38 @@
 
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import Link from "next/link";
-import { supabase } from "../lib/supabaseClient";
 
 export default function AuthStatus() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then(({ data, error }) => {
-        if (!error) {
-          setUser(data.user ?? null);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch(() => setUser(null));
+    async function fetchUser() {
+      const response = await fetch(
+        "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ action: "getUser" }),
+        },
+      );
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      } else {
+        console.error("Failed to fetch user data");
+      }
+    }
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    fetchUser();
   }, []);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-  }
-
-  if (user === undefined) return null;
-
   if (!user) {
-    return (
-      <Link
-        href="/login"
-        className="border rounded px-3 py-1 text-sm bg-black hover:bg-black-100"
-      >
-        Kirjaudu
-      </Link>
-    );
+    return <p>Ei kirjautunutta käyttäjää</p>;
   }
 
-  return (
-    <button
-      type="button"
-      onClick={handleLogout}
-      className="border rounded px-3 py-1 text-sm bg-black hover:bg-black-100"
-    >
-      Kirjaudu ulos
-    </button>
-  );
+  return <p>Kirjautunut käyttäjä: {user.email}</p>;
 }

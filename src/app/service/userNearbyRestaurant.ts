@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { supabase } from "../lib/supabaseClient";
 import { getLatestMenusByRestaurant } from "./restaurants";
 import {
   getReviewStatsByRestaurant,
   getUserReviewsByRestaurant,
 } from "./reviews";
+
 import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
@@ -91,27 +91,44 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.from("ravintolat").select("*");
-      if (error || !Array.isArray(data)) {
-        console.warn("Supabase error:", error?.message);
+      const response = await fetch(
+        "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.SUBASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ action: "getRestaurants" }),
+        }
+      );
+
+      if (!response.ok) {
+        console.warn("Supabase error:", response.statusText);
         setRestaurants([]);
         return;
       }
 
-      const parsed = (data ?? [])
+      const result = await response.json();
+      const parsed = (result.data ?? [])
         .map(toRestaurant)
-        .filter((r): r is Restaurant => r !== null);
+        .filter((r: Restaurant | null): r is Restaurant => r !== null);
 
       try {
-        const ids = parsed.map((r) => r.id);
+        const ids = parsed.map((r: Restaurant) => r.id);
+        const userId = ""; // Replace with actual user ID from auth or context
 
-        const [menusByRestaurant, reviewStats, myReviews] = await Promise.all([
+        const [menusByRestaurant, reviewStats, myReviewsArray] = await Promise.all([
           getLatestMenusByRestaurant(ids),
           getReviewStatsByRestaurant(ids),
-          getUserReviewsByRestaurant(ids),
+          Promise.all(ids.map((id: string) => getUserReviewsByRestaurant(id, userId))),
         ]);
 
-        const merged = parsed.map((r) => {
+        const myReviews = Object.fromEntries(
+          ids.map((id: string, index: number) => [id, myReviewsArray[index]])
+        );
+
+        const merged = parsed.map((r: Restaurant) => {
           const stats = reviewStats[r.id];
           const mine = myReviews[r.id];
           return {
