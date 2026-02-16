@@ -1,31 +1,37 @@
-
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js";
 import type { RestaurantBrief } from "../../src/app/service/types";
 
 export function hasUrl(r: RestaurantBrief): r is RestaurantBrief & { url: string } {
   return typeof r.url === "string" && r.url.trim().length > 0;
 }
 
-export async function runRefresh(ids?: string[]) {
+export async function runRefresh(
+  supabase: SupabaseClient,
+  openai: OpenAI,
+  idList: string[] = [],
+): Promise<{ data: RestaurantBrief[]; error: string | null }> {
   const base = supabase
     .from("ravintolat")
     .select("id, name, url")
     .not("url", "is", null)
     .neq("url", "");
-  const { data, error } = ids
-    ? await base.in("id", ids).returns<RestaurantBrief[]>()
+
+  // Suodatetaan vain kelvolliset UUID:t
+  const validIds = idList.filter((id) => validateUuid(id));
+  if (idList.length > 0 && validIds.length === 0) {
+    return { data: [], error: "No valid UUIDs provided in idList." };
+  }
+
+  const { data, error } = validIds.length > 0
+    ? await base.in("id", validIds).returns<RestaurantBrief[]>()
     : await base.returns<RestaurantBrief[]>();
 
   if (error) {
     console.error("Supabase ravintolat error:", error.message);
-    return new Response(
-      JSON.stringify({ ok: false, error: `Supabase: ${error.message}` }),
-      { status: 500 },
-    );
+    return { data: [], error: error.message };
   }
 
-  const withUrl = (data ?? []).filter(hasUrl);
-  console.log(
-    "Ravintolat haettu:",
-    withUrl.map((r) => r.name),
-  );
+  console.log("Fetched restaurants from Supabase:", data);
+
+  return { data: data ?? [], error: null };
 }
