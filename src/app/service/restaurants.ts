@@ -1,22 +1,29 @@
 export async function getRestaurants() {
-  const response = await fetch(
-    "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      },
-    }
-  );
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
 
-  if (!response.ok) {
-    console.error("Failed to fetch restaurants");
+    if (!response.ok) {
+      console.error("Failed to fetch restaurants:", response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log("Raw API response:", data); // Tulostetaan raaka API-vastaus
+
+    return data.data ?? [];
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
     return [];
   }
-
-  const data = await response.json();
-  return data.results ?? [];
 }
 
 export async function getLatestMenusByRestaurant(

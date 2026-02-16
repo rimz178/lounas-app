@@ -113,7 +113,6 @@ export default function LeafletMap({
   restaurants,
   userLocation,
 }: Props) {
-  // Käytetään vain propseja (HomeClient huolehtii hausta)
   const restaurantsToUse = restaurants;
   const userLocationToUse = userLocation ?? null;
 

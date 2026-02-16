@@ -12,11 +12,10 @@ export async function runRefresh(
 ): Promise<{ data: RestaurantBrief[]; error: string | null }> {
   const base = supabase
     .from("ravintolat")
-    .select("id, name, url")
+    .select("id, name, url, latitude, longitude") // Lisätään koordinaatit
     .not("url", "is", null)
     .neq("url", "");
 
-  // Suodatetaan vain kelvolliset UUID:t
   const validIds = idList.filter((id) => validateUuid(id));
   if (idList.length > 0 && validIds.length === 0) {
     return { data: [], error: "No valid UUIDs provided in idList." };
@@ -31,7 +30,12 @@ export async function runRefresh(
     return { data: [], error: error.message };
   }
 
-  console.log("Fetched restaurants from Supabase:", data);
+  const cleanedData = (data ?? []).map((restaurant) => ({
+    ...restaurant,
+    name: restaurant.name.trim(),
+  }));
 
-  return { data: data ?? [], error: null };
+  console.log("Cleaned restaurants from Supabase:", cleanedData);
+
+  return { data: cleanedData, error: null };
 }

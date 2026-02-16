@@ -196,3 +196,31 @@ const RestaurantList = memo(function RestaurantList({
 });
 
 export default RestaurantList;
+
+export async function getRestaurants() {
+  try {
+    const response = await fetch(
+      "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch restaurants:", response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log("Fetched restaurants data:", data); // Tulostetaan haettu data
+
+    return data.data ?? [];
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    return [];
+  }
+}
