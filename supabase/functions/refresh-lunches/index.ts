@@ -15,7 +15,6 @@ const apiKey = Deno.env.get("OPENAI_API_KEY");
 if (!apiKey) {
   throw new Error("OPENAI_API_KEY environment variable is not set");
 }
-const openai = new OpenAI(apiKey);
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

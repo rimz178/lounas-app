@@ -216,7 +216,7 @@ export async function getRestaurants() {
     }
 
     const data = await response.json();
-    console.log("Fetched restaurants data:", data); // Tulostetaan haettu data
+    console.log("Fetched restaurants data:", data);
 
     return data.data ?? [];
   } catch (error) {
