@@ -116,7 +116,7 @@ export function useNearbyRestaurants(radiusKm = 2) {
 
       try {
         const ids = parsed.map((r: Restaurant) => r.id);
-        const userId = ""; // Replace with actual user ID from auth or context
+        const userId = ""; 
 
         const [menusByRestaurant, reviewStats, myReviewsArray] = await Promise.all([
           getLatestMenusByRestaurant(ids),

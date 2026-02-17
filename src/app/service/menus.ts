@@ -1,4 +1,4 @@
-import { supabaseServer } from "../lib/supabaseServerClient";
+
 
 export async function insertMenu(
   restaurantId: string,

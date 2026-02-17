@@ -12,7 +12,7 @@ export async function runRefresh(
 ): Promise<{ data: RestaurantBrief[]; error: string | null }> {
   const base = supabase
     .from("ravintolat")
-    .select("id, name, url, latitude, longitude") // Lisätään koordinaatit
+    .select("id, name, url, lat, lng") 
     .not("url", "is", null)
     .neq("url", "");
 
