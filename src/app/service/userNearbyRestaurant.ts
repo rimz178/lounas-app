@@ -1,23 +1,10 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { getLatestMenusByRestaurant } from "./restaurants";
-import {
-  getReviewStatsByRestaurant,
-  getUserReviewsByRestaurant,
-} from "./reviews";
+import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
 
 import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
-}
-
-function toNumber(value: unknown): number | null {
-  if (isFiniteNumber(value)) return value;
-  if (typeof value === "string") {
-    const n = Number(value.trim());
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
 }
 
 function isValidLat(lat: unknown): lat is number {
@@ -26,24 +13,6 @@ function isValidLat(lat: unknown): lat is number {
 
 function isValidLng(lng: unknown): lng is number {
   return isFiniteNumber(lng) && lng >= -180 && lng <= 180;
-}
-
-function toRestaurant(row: unknown): Restaurant | null {
-  if (typeof row !== "object" || row === null) return null;
-  const o = row as Record<string, unknown>;
-
-  const id = typeof o.id === "string" ? o.id : null;
-  const name = typeof o.name === "string" ? o.name : null;
-  const url = typeof o.url === "string" ? o.url : "";
-
-  const lat = toNumber(o.lat);
-  const lng = toNumber(o.lng);
-  const menu_text = typeof o.menu_text === "string" ? o.menu_text : undefined;
-
-  if (!id || !name || lat === null || lng === null) return null;
-  if (!isValidLat(lat) || !isValidLng(lng)) return null;
-
-  return { id, name, lat, lng, url, menu_text };
 }
 
 function getDistanceKm(
@@ -91,61 +60,21 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "https://clurtxpqwmekgicwusqs.supabase.co/functions/v1/refresh-lunches",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.SUBASE_SERVICE_ROLE_KEY}`,
-          },
-          body: JSON.stringify({ action: "getRestaurants" }),
-        }
-      );
+      // Hae ravintolat ja lounaslistat suoraan Supabasesta
+      const fetchedRestaurants = await getRestaurants();
+      const ids = fetchedRestaurants.map((r: { id: string; }) => r.id);
+      const menusByRestaurant = await getLatestMenusByRestaurant(ids);
 
-      if (!response.ok) {
-        console.warn("Supabase error:", response.statusText);
-        setRestaurants([]);
-        return;
-      }
+      // Yhdistä lounaslistat ravintoloihin
+      const merged = fetchedRestaurants.map((r: Restaurant) => ({
+        ...r,
+        menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+      }));
 
-      const result = await response.json();
-      const parsed = (result.data ?? [])
-        .map(toRestaurant)
-        .filter((r: Restaurant | null): r is Restaurant => r !== null);
-
-      try {
-        const ids = parsed.map((r: Restaurant) => r.id);
-        const userId = ""; 
-
-        const [menusByRestaurant, reviewStats, myReviewsArray] = await Promise.all([
-          getLatestMenusByRestaurant(ids),
-          getReviewStatsByRestaurant(ids),
-          Promise.all(ids.map((id: string) => getUserReviewsByRestaurant(id, userId))),
-        ]);
-
-        const myReviews = Object.fromEntries(
-          ids.map((id: string, index: number) => [id, myReviewsArray[index]])
-        );
-
-        const merged = parsed.map((r: Restaurant) => {
-          const stats = reviewStats[r.id];
-          const mine = myReviews[r.id];
-          return {
-            ...r,
-            menu_text: menusByRestaurant[r.id] ?? r.menu_text,
-            averageRating: stats?.average,
-            reviewCount: stats?.count ?? 0,
-            myRating: mine?.rating,
-            myComment: mine?.comment ?? null,
-          };
-        });
-
-        setRestaurants(merged);
-      } catch (e) {
-        console.warn("Menus or reviews fetch failed:", e);
-        setRestaurants(parsed);
-      }
+      setRestaurants(merged);
+    } catch (error) {
+      console.error("Error fetching restaurants or menus:", error);
+      setRestaurants([]);
     } finally {
       setLoading(false);
       fetchingRef.current = false;
