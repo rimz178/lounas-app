@@ -47,7 +47,7 @@ export default function HomeClient() {
         restaurants={restaurants}
         userLocation={userLocation}
       />
-      <RestaurantList restaurants={restaurants} reload={reload} />
+      <RestaurantList restaurants={restaurants} />
     </>
   );
 }
