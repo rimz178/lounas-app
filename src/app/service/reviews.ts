@@ -6,7 +6,6 @@ interface Review {
   comment: string;
 }
 
-// Hae arvostelutilastot ravintoloittain
 export async function getReviewStatsByRestaurant(
   ids: string[]
 ): Promise<Record<string, { average: number; count: number }>> {
@@ -23,7 +22,6 @@ export async function getReviewStatsByRestaurant(
       return {};
     }
 
-    // Lasketaan keskiarvot ja määrät
     const stats: Record<string, { average: number; count: number }> = {};
     ids.forEach((id) => {
       const reviews = data?.filter((review) => review.restaurant_id === id) || [];
@@ -41,7 +39,6 @@ export async function getReviewStatsByRestaurant(
   }
 }
 
-// Lisää uusi arvostelu
 export async function insertReview(
   restaurantId: string,
   rating: number,
@@ -58,7 +55,7 @@ export async function insertReview(
       .insert([
         {
           restaurant_id: restaurantId,
-          user_id: user.id, // Lisää kirjautuneen käyttäjän ID
+          user_id: user.id, 
           rating,
           comment: comment.trim() || null,
         },
@@ -111,5 +108,58 @@ export async function getUserReviewsByRestaurant(
   } catch (error) {
     console.error(`Virhe haettaessa käyttäjän arvosteluja: ${error}`);
     return null;
+  }
+}
+
+// Muokkaa arvostelua
+export async function updateReview(
+  restaurantId: string,
+  rating: number,
+  comment: string
+) {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Käyttäjätietojen haku epäonnistui.");
+    }
+
+    const { error } = await supabase
+      .from("reviews")
+      .update({
+        rating,
+        comment: comment.trim() || null,
+      })
+      .eq("restaurant_id", restaurantId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      throw new Error(`Arvostelun muokkaaminen epäonnistui: ${error.message}`);
+    }
+  } catch (error) {
+    console.error("Virhe muokattaessa arvostelua:", error);
+    throw error;
+  }
+}
+
+// Poista käyttäjän arvostelu
+export async function deleteUserReview(restaurantId: string) {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Käyttäjätietojen haku epäonnistui.");
+    }
+
+    const { error } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("restaurant_id", restaurantId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      throw new Error(`Arvostelun poistaminen epäonnistui: ${error.message}`);
+    }
+  } catch (error) {
+    console.error("Virhe poistettaessa arvostelua:", error);
+    throw error;
   }
 }

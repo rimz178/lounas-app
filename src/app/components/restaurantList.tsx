@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getReviewStatsByRestaurant, insertReview } from "../service/reviews";
+import { getReviewStatsByRestaurant, insertReview, updateReview, deleteUserReview } from "../service/reviews";
 
 interface Restaurant {
   id: string;
@@ -76,6 +76,58 @@ export default function RestaurantList({
     }
   }
 
+  async function handleUpdate(e: React.FormEvent, restaurantId: string) {
+    e.preventDefault();
+    setSubmitting(true);
+    setStatus(null);
+    try {
+      await updateReview(restaurantId, rating, comment);
+      setStatus("Arvostelu päivitetty!");
+      setComment("");
+      setActiveId(null);
+
+      // Päivitä arvostelut
+      const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+      const reviewStats = await getReviewStatsByRestaurant(restaurantIds);
+      const updatedRestaurants = restaurants.map((restaurant) => ({
+        ...restaurant,
+        reviews: reviewStats[restaurant.id] || { average: 0, count: 0 },
+      }));
+      setRestaurantsWithReviews(updatedRestaurants);
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : "Arvostelun päivitys epäonnistui",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(restaurantId: string) {
+    setSubmitting(true);
+    setStatus(null);
+    try {
+      await deleteUserReview(restaurantId);
+      setStatus("Arvostelu poistettu!");
+      setActiveId(null);
+
+      // Päivitä arvostelut
+      const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+      const reviewStats = await getReviewStatsByRestaurant(restaurantIds);
+      const updatedRestaurants = restaurants.map((restaurant) => ({
+        ...restaurant,
+        reviews: reviewStats[restaurant.id] || { average: 0, count: 0 },
+      }));
+      setRestaurantsWithReviews(updatedRestaurants);
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : "Arvostelun poisto epäonnistui",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 gap-4">
       {restaurantsWithReviews.map((restaurant) => (
@@ -94,7 +146,7 @@ export default function RestaurantList({
           )}
           {activeId === restaurant.id ? (
             <form
-              onSubmit={(e) => handleSubmit(e, restaurant.id)}
+              onSubmit={(e) => handleUpdate(e, restaurant.id)}
               className="space-y-2"
             >
               <div className="flex items-center gap-2">
@@ -127,7 +179,14 @@ export default function RestaurantList({
                   disabled={submitting}
                   className="border rounded px-3 py-1 bg-blue-600 text-white text-sm disabled:opacity-60"
                 >
-                  {submitting ? "Tallennetaan..." : "Tallenna arvostelu"}
+                  {submitting ? "Päivitetään..." : "Päivitä arvostelu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(restaurant.id)}
+                  className="border rounded px-3 py-1 bg-red-600 text-white text-sm disabled:opacity-60"
+                >
+                  {submitting ? "Poistetaan..." : "Poista arvostelu"}
                 </button>
                 <button
                   type="button"
