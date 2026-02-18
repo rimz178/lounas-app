@@ -14,7 +14,7 @@ const leafletVersion = "1.9.4";
  *
  * @param {Object} props - Component props
  * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
- * @param {(id: string) void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
+ * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
  * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display as markers
  * @param {Object} [props.userLocation] - The user's location (if any)
  * @returns {JSX.Element} The rendered map component
