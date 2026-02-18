@@ -48,15 +48,27 @@ export async function insertReview(
   comment: string
 ) {
   try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Käyttäjätietojen haku epäonnistui.");
+    }
+
     const { error } = await supabase
       .from("reviews")
-      .insert([{ restaurant_id: restaurantId, rating, comment: comment.trim() || null }]);
+      .insert([
+        {
+          restaurant_id: restaurantId,
+          user_id: user.id, // Lisää kirjautuneen käyttäjän ID
+          rating,
+          comment: comment.trim() || null,
+        },
+      ]);
 
     if (error) {
       throw new Error(`Arvostelun lisääminen epäonnistui: ${error.message}`);
     }
   } catch (error) {
-    console.error(`Virhe lisättäessä arvostelua: ${error}`);
+    console.error("Virhe lisättäessä arvostelua:", error);
     throw error;
   }
 }
