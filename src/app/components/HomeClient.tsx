@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useState } from "react";
 import RestaurantMap from "./Map";
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
 import RestaurantList from "./restaurantList";

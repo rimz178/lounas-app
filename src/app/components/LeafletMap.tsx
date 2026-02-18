@@ -12,10 +12,13 @@ const leafletVersion = "1.9.4";
 /**
  * LeafletMap renders an interactive map with restaurant markers.
  *
+ *
  * @param {Object} props - Component props
  * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
  * @param {(id: string) void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
+ * @param {(id: string) void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
  * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display as markers
+ * @param {Object} [props.userLocation] - The user's location (if any)
  * @param {Object} [props.userLocation] - The user's location (if any)
  * @returns {JSX.Element} The rendered map component
  */
@@ -33,9 +36,16 @@ const isValidLat = (lat: number) =>
 const isValidLng = (lng: number) =>
   Number.isFinite(lng) && lng >= -180 && lng <= 180;
 
+const isValidLat = (lat: number) =>
+  Number.isFinite(lat) && lat >= -90 && lat <= 90;
+const isValidLng = (lng: number) =>
+  Number.isFinite(lng) && lng >= -180 && lng <= 180;
+
 type Props = {
   selectedRestaurantId?: string;
   onSelectRestaurantId?: (id: string) => void;
+  restaurants: Restaurant[];
+  userLocation?: { lat: number; lng: number } | null;
   restaurants: Restaurant[];
   userLocation?: { lat: number; lng: number } | null;
 };
@@ -107,10 +117,52 @@ function UserLocationController({
   return null;
 }
 
+function UserLocationController({
+  userLocation,
+  selectedRestaurantId,
+}: {
+  userLocation?: { lat: number; lng: number } | null;
+  selectedRestaurantId?: string;
+}) {
+  const map = useMap();
+  const prevRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (selectedRestaurantId) return;
+
+    if (
+      userLocation &&
+      isValidLat(userLocation.lat) &&
+      isValidLng(userLocation.lng)
+    ) {
+      const prev = prevRef.current;
+      const moved =
+        !prev ||
+        Math.abs(prev.lat - userLocation.lat) > 0.0001 ||
+        Math.abs(prev.lng - userLocation.lng) > 0.0001;
+
+      if (moved) {
+        prevRef.current = userLocation;
+        map.flyTo(
+          [userLocation.lat, userLocation.lng],
+          Math.max(map.getZoom(), 14),
+          {
+            animate: true,
+            duration: 0.8,
+          },
+        );
+      }
+    }
+  }, [userLocation, selectedRestaurantId, map]);
+
+  return null;
+}
+
 export default function LeafletMap({
   selectedRestaurantId,
   onSelectRestaurantId,
   restaurants,
+  userLocation,
   userLocation,
 }: Props) {
   const restaurantsToUse = restaurants;
@@ -120,7 +172,9 @@ export default function LeafletMap({
   const selectedTarget = useMemo(() => {
     if (!selectedRestaurantId) return undefined;
     const r = restaurantsToUse.find((x) => x.id === selectedRestaurantId);
+    const r = restaurantsToUse.find((x) => x.id === selectedRestaurantId);
     return r ? { lat: r.lat, lng: r.lng } : undefined;
+  }, [selectedRestaurantId, restaurantsToUse]);
   }, [selectedRestaurantId, restaurantsToUse]);
 
   return (
@@ -131,9 +185,18 @@ export default function LeafletMap({
             ? [userLocationToUse.lat, userLocationToUse.lng]
             : HELSINKI_CENTER
         }
+        center={
+          userLocationToUse
+            ? [userLocationToUse.lat, userLocationToUse.lng]
+            : HELSINKI_CENTER
+        }
         zoom={14}
         className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
       >
+        <UserLocationController
+          userLocation={userLocationToUse}
+          selectedRestaurantId={selectedRestaurantId}
+        />
         <UserLocationController
           userLocation={userLocationToUse}
           selectedRestaurantId={selectedRestaurantId}
@@ -149,6 +212,7 @@ export default function LeafletMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {restaurantsToUse.map((r) => {
         {restaurantsToUse.map((r) => {
           const position: LatLngExpression = [r.lat, r.lng];
           return (
@@ -196,8 +260,67 @@ export default function LeafletMap({
             <Popup>Olet tässä</Popup>
           </Marker>
         )}
+
+        {userLocationToUse && (
+          <Marker
+            position={[userLocationToUse.lat, userLocationToUse.lng]}
+            icon={L.divIcon({
+              className: "",
+              html: `<div style="background:#2563eb;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 0 6px #2563eb;"></div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            })}
+          >
+            <Popup>Olet tässä</Popup>
+          </Marker>
+        )}
       </MapContainer>
     </div>
+  );
+}
+
+function cleanMenuText(text?: string): string {
+  return (text ?? "")
+    .replace(/#+/g, "\n") // turn #### into line breaks
+    .replace(/\s{2,}/g, " ") // collapse extra spaces
+    .trim();
+}
+
+function parseMenuItems(text?: string, max = 6): string[] {
+  const raw = cleanMenuText(text);
+  if (!raw) return [];
+
+  const tokens = raw
+    .split(/\r?\n|[•–—\-,:;|]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const unique = Array.from(new Set(tokens));
+  const truncate = (s: string) => (s.length > 90 ? s.slice(0, 87) + "..." : s);
+  return unique.slice(0, max).map(truncate);
+}
+
+function renderMenuList(text: string | undefined, max: number, rid: string) {
+  const items = parseMenuItems(text, max);
+  if (!items.length) {
+    return (
+      <div style={{ margin: "8px 2px", color: "#6b7280" }}>
+        Ei lounaslistaa saatavilla
+      </div>
+    );
+  }
+  return (
+    <ul style={{ margin: "8px 2px", paddingLeft: 0, listStyle: "none" }}>
+      {items.map((item) => (
+        <li
+          key={`${rid}:${item.toLowerCase()}`}
+          style={{ display: "flex", gap: 6, marginTop: 4 }}
+        >
+          <span aria-hidden>•</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
