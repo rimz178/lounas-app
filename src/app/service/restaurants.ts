@@ -1,16 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "./supabaseClient";
 import type { Restaurant } from "./types";
-
-// Supabasen konfiguraatio
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase environment variables");
-}
-
-// Luo Supabase-asiakas
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Hakee kaikki ravintolat Supabasesta.

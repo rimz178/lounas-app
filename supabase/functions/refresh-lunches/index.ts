@@ -9,6 +9,7 @@ import { runRefresh } from "./supabase.ts";
 import { OpenAI } from "https://deno.land/x/openai/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
+import { extractMenu } from "./openai.ts";
 
 // Alustetaan ympäristömuuttujat
 const apiKey = Deno.env.get("OPENAI_API_KEY");
@@ -19,11 +20,8 @@ if (!apiKey) {
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-if (!supabaseUrl) {
-  throw new Error("SUPABASE_URL environment variable is not set");
-}
-if (!supabaseServiceRoleKey) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error("Missing Supabase environment variables");
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
@@ -40,43 +38,72 @@ serve(async (req) => {
   }
 
   try {
-    const text = await req.text();
-    console.log("RAW BODY:", text);
+    const authHeader = req.headers.get("Authorization");
+    const jwt = authHeader?.split("Bearer ")[1];
 
-    const body = text ? JSON.parse(text) : {};
-    console.log("PARSED BODY:", body);
+    // Tarkista, onko käyttäjä todennettu
+    const isAuthenticated = jwt ? true : false;
 
-    // Tarkistetaan, onko idList taulukko
-    const idList = Array.isArray(body?.id) ? body.id : [];
-    console.log("Extracted ID list:", idList);
+    const { ids, action } = await req.json();
 
-    // Haetaan ravintoloiden tiedot runRefresh-funktiolla
-    const { data, error } = await runRefresh(supabase, idList);
+    if (action === "getRestaurants") {
+      // Hae ravintolatiedot
+      const { data: restaurants, error } = await supabase
+        .from("ravintolat")
+        .select("id, name, lat, lng, url");
 
-    if (error) {
-      throw new Error(error);
+      if (error) {
+        throw new Error(`Error fetching restaurants: ${error.message}`);
+      }
+
+      return new Response(JSON.stringify({ data: restaurants }), {
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(
-      JSON.stringify({ message: "Refresh completed successfully!", data }),
-      {
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
+    if (action === "updateMenus" && isAuthenticated) {
+      // Päivitä lounaslistat vain todennetuille käyttäjille
+      const { data: restaurants, error } = await supabase
+        .from("ravintolat")
+        .select("id, name, url")
+        .in("id", ids);
+
+      if (error) {
+        throw new Error(`Error fetching restaurants: ${error.message}`);
       }
+
+      const results = [];
+      for (const restaurant of restaurants) {
+        try {
+          const html = await fetchRenderedHtml(restaurant.url);
+          const menu = await extractMenu(restaurant.name, restaurant.url, html);
+
+          await supabase.from("menus").insert({
+            restaurant_id: restaurant.id,
+            menu_text: menu,
+          });
+
+          results.push({ id: restaurant.id, menu });
+        } catch (err) {
+          results.push({ id: restaurant.id, error: err.message });
+        }
+      }
+
+      return new Response(JSON.stringify({ results }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Jos toiminto ei ole sallittu
+    return new Response(
+      JSON.stringify({ error: "Unauthorized or invalid action" }),
+      { status: 403 }
     );
   } catch (error) {
-    console.error("Error in refresh-lunches function:", error);
+    console.error("Error in Edge Function:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Unknown error occurred." }),
-      {
-        status: 500,
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-      }
+      JSON.stringify({ error: error.message }),
+      { status: 500 }
     );
   }
 });
