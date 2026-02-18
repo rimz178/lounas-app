@@ -5,8 +5,6 @@ import { useEffect, useMemo, useRef } from "react";
 import L, { type LatLngExpression } from "leaflet";
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-
-import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
 import type { Restaurant } from "../service/types";
 
 const leafletVersion = "1.9.4";
@@ -16,7 +14,7 @@ const leafletVersion = "1.9.4";
  *
  * @param {Object} props - Component props
  * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
- * @param {(id: string) void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
+ * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
  * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display as markers
  * @param {Object} [props.userLocation] - The user's location (if any)
  * @returns {JSX.Element} The rendered map component
@@ -115,11 +113,8 @@ export default function LeafletMap({
   restaurants,
   userLocation,
 }: Props) {
-  const { restaurants: hookRestaurants, userLocation: hookUserLocation } =
-    useNearbyRestaurants();
-
-  const restaurantsToUse = restaurants ?? hookRestaurants;
-  const userLocationToUse = userLocation ?? hookUserLocation;
+  const restaurantsToUse = restaurants;
+  const userLocationToUse = userLocation ?? null;
 
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const selectedTarget = useMemo(() => {
@@ -171,6 +166,14 @@ export default function LeafletMap({
             >
               <Popup>
                 <strong>{r.name}</strong>
+
+                {typeof r.averageRating === "number" && (
+                  <div style={{ margin: "4px 2px", fontSize: 12 }}>
+                    Arvosana {r.averageRating.toFixed(1)}/5 (
+                    {r.reviewCount ?? 0})
+                  </div>
+                )}
+
                 {renderMenuList(r.menu_text, 6, r.id)}
                 <a href={r.url} target="_blank" rel="noreferrer">
                   Avaa ravintolan sivut

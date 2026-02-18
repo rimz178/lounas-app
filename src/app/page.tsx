@@ -1,4 +1,5 @@
 import HomeClient from "./components/HomeClient";
+import AuthButton from "./components/AuthButton";
 
 async function refreshMenus() {
   "use server";
@@ -18,18 +19,11 @@ async function refreshMenus() {
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <div className="p-4">
-        <h1 className="text-3xl font-bold mb-4">Lounas Tänään</h1>
-
-        <form action={refreshMenus}>
-          <button
-            type="submit"
-            className="border rounded px-2 py-1 bg-blue-600 text-white"
-          >
-            Päivitä lounaslistat nyt
-          </button>
-        </form>
+      <div className="p-4 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Lounas Tändään</h1>
+        <AuthButton />
       </div>
+
       <HomeClient />
     </div>
   );

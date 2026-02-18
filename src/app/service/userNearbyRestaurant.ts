@@ -1,19 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { getLatestMenusByRestaurant } from "./restaurants";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
+
 import type { Restaurant } from "./types";
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
-}
-
-function toNumber(value: unknown): number | null {
-  if (isFiniteNumber(value)) return value;
-  if (typeof value === "string") {
-    const n = Number(value.trim());
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
 }
 
 function isValidLat(lat: unknown): lat is number {
@@ -22,24 +13,6 @@ function isValidLat(lat: unknown): lat is number {
 
 function isValidLng(lng: unknown): lng is number {
   return isFiniteNumber(lng) && lng >= -180 && lng <= 180;
-}
-
-function toRestaurant(row: unknown): Restaurant | null {
-  if (typeof row !== "object" || row === null) return null;
-  const o = row as Record<string, unknown>;
-
-  const id = typeof o.id === "string" ? o.id : null;
-  const name = typeof o.name === "string" ? o.name : null;
-  const url = typeof o.url === "string" ? o.url : "";
-
-  const lat = toNumber(o.lat);
-  const lng = toNumber(o.lng);
-  const menu_text = typeof o.menu_text === "string" ? o.menu_text : undefined;
-
-  if (!id || !name || lat === null || lng === null) return null;
-  if (!isValidLat(lat) || !isValidLng(lng)) return null;
-
-  return { id, name, lat, lng, url, menu_text };
 }
 
 function getDistanceKm(
@@ -74,90 +47,47 @@ export function useNearbyRestaurants(radiusKm = 2) {
     lng: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const fetchingRef = useRef(false);
+  const pendingRef = useRef(false);
 
   const fetchRestaurants = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("ravintolat").select("*");
-    if (error || !Array.isArray(data)) {
-      console.warn("Supabase error:", error?.message);
-      setRestaurants([]);
-      setLoading(false);
+    if (fetchingRef.current) {
+      pendingRef.current = true;
       return;
     }
 
-    const parsed = (data ?? [])
-      .map(toRestaurant)
-      .filter((r): r is Restaurant => r !== null);
+    fetchingRef.current = true;
+    setLoading(true);
 
     try {
-      const ids = parsed.map((r) => r.id);
+      // Hae ravintolat ja lounaslistat suoraan Supabasesta
+      const fetchedRestaurants = await getRestaurants();
+      const ids = fetchedRestaurants.map((r: { id: string; }) => r.id);
       const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-      const merged = parsed.map((r) => ({
+
+      // Yhdistä lounaslistat ravintoloihin
+      const merged = fetchedRestaurants.map((r: Restaurant) => ({
         ...r,
         menu_text: menusByRestaurant[r.id] ?? r.menu_text,
       }));
+
       setRestaurants(merged);
-    } catch (e) {
-      console.warn("Menus fetch failed:", e);
-      setRestaurants(parsed);
+    } catch (error) {
+      console.error("Error fetching restaurants or menus:", error);
+      setRestaurants([]);
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        void fetchRestaurants();
+      }
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchRestaurants();
-  }, [fetchRestaurants]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("lounas-app-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat INSERT:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat UPDATE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "ravintolat" },
-        (payload) => {
-          console.log("ravintolat DELETE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "menus" },
-        (payload) => {
-          console.log("menus INSERT:", payload);
-          fetchRestaurants();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "menus" },
-        (payload) => {
-          console.log("menus UPDATE:", payload);
-          fetchRestaurants();
-        },
-      )
-      .subscribe((status) => {
-        console.log("Realtime status:", status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchRestaurants]);
 
   useEffect(() => {

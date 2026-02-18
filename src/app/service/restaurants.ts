@@ -1,39 +1,58 @@
-import { supabase } from "../lib/supabaseClient";
-import type { RestaurantBrief } from "./types";
+import { supabase } from "./supabaseClient";
+import type { Restaurant } from "./types";
 
-export async function getRestaurants() {
-  return supabase
-    .from("ravintolat")
-    .select("id, name, url")
-    .returns<RestaurantBrief[]>();
+/**
+ * Hakee kaikki ravintolat Supabasesta.
+ */
+export async function getRestaurants(): Promise<Restaurant[]> {
+  try {
+    const { data, error } = await supabase
+      .from("ravintolat")
+      .select("id, name, lat, lng, url");
+
+    if (error) {
+      console.error("Error fetching restaurants:", error.message);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    return [];
+  }
 }
 
+/**
+ * Hakee lounaslistat ravintoloille Supabasesta.
+ */
 export async function getLatestMenusByRestaurant(
   ids: string[],
 ): Promise<Record<string, string>> {
   if (!ids.length) return {};
 
-  const { data, error } = await supabase
-    .from("menus")
-    .select("restaurant_id, menu_text, created_at")
-    .in("restaurant_id", ids)
-    .order("created_at", { ascending: false });
+  try {
+    // Hae lounaslistat suoraan Supabasesta
+    const { data, error } = await supabase
+      .from("menus")
+      .select("restaurant_id, menu_text")
+      .in("restaurant_id", ids);
 
-  if (error) {
-    console.warn("Supabase menus error:", error.message);
+    if (error) {
+      console.error("Error fetching latest menus:", error.message);
+      return {};
+    }
+
+    // Muodosta ravintola-ID:n ja lounaslistan välinen map
+    const map: Record<string, string> = {};
+    data?.forEach((row) => {
+      if (row.restaurant_id && row.menu_text) {
+        map[row.restaurant_id] = row.menu_text.trim();
+      }
+    });
+
+    return map;
+  } catch (error) {
+    console.error("Error fetching latest menus:", error);
     return {};
   }
-
-  const rows = (data ?? []) as Array<{
-    restaurant_id: string | null;
-    menu_text: string | null;
-    created_at: string | null;
-  }>;
-  const map: Record<string, string> = {};
-  for (const id of ids) {
-    const row = rows.find((r) => r.restaurant_id === id);
-    const text = row?.menu_text?.trim();
-    if (text) map[id] = text;
-  }
-  return map;
 }
