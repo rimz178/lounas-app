@@ -1,14 +1,14 @@
 "use client";
 
+import type { User } from "@supabase/supabase-js";
 import {
   createContext,
-  useContext,
   useCallback,
+  useContext,
   useEffect,
   useState,
 } from "react";
 import { supabase } from "../service/supabaseClient";
-import type { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
@@ -23,7 +23,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Tarkista kirjautumistila ja päivitä käyttäjä
   const refreshAuth = useCallback(async () => {
     setLoading(true);
     const {
@@ -36,7 +35,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     refreshAuth();
 
-    // Kuuntele kirjautumistilan muutoksia
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "SIGNED_OUT") {

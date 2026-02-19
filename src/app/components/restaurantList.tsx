@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  getReviewStatsByRestaurant,
-  upsertReview,
   deleteUserReview,
+  getReviewStatsByRestaurant,
   getUserReview,
+  upsertReview,
 } from "../service/reviews";
 import { useAuth } from "./AuthContext";
 
@@ -26,7 +26,6 @@ export default function RestaurantList({
 }: {
   restaurants: Restaurant[];
 }) {
-  const { isLoggedIn } = useAuth(); // Käytä AuthContextia kirjautumistilan tarkistamiseen
   const [restaurantsWithReviews, setRestaurantsWithReviews] = useState<
     RestaurantWithReviews[]
   >([]);
@@ -35,26 +34,26 @@ export default function RestaurantList({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({});
+  const { isLoggedIn, user } = useAuth(); 
+  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); 
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      setUserReviews({});
-      return;
-    }
-
-    const fetchUserReviews = async () => {
-      const reviews: Record<string, boolean> = {};
-      for (const restaurant of restaurants) {
-        const userReview = await getUserReview(restaurant.id);
-        if (userReview) {
-          reviews[restaurant.id] = true;
+    const checkAuth = async () => {
+      if (isLoggedIn && user) {
+        const reviews: Record<string, boolean> = {};
+        for (const restaurant of restaurants) {
+          const userReview = await getUserReview(restaurant.id);
+          if (userReview) {
+            reviews[restaurant.id] = true;
+          }
         }
+        setUserReviews(reviews);
+      } else {
+        setUserReviews({});
       }
-      setUserReviews(reviews);
     };
 
-    fetchUserReviews();
+    checkAuth();
 
     const fetchReviews = async () => {
       try {
@@ -73,7 +72,7 @@ export default function RestaurantList({
     };
 
     fetchReviews();
-  }, [restaurants, isLoggedIn]);
+  }, [restaurants, isLoggedIn, user]);
 
   const handleEdit = async (restaurantId: string) => {
     setActiveId(restaurantId);

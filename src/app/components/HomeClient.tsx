@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import RestaurantMap from "./Map";
 import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
+import RestaurantMap from "./Map";
 import RestaurantList from "./restaurantList";
 
 export default function HomeClient() {

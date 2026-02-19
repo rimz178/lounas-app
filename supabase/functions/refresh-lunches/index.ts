@@ -4,12 +4,12 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { fetchRenderedHtml } from "./fetchRenderHtml.ts";
-import { runRefresh } from "./supabase.ts";
-import { OpenAI } from "https://deno.land/x/openai/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { OpenAI } from "https://deno.land/x/openai/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
+import { fetchRenderedHtml } from "./fetchRenderHtml.ts";
 import { extractMenu } from "./openai.ts";
+import { runRefresh } from "./supabase.ts";
 
 // Alustetaan ympäristömuuttujat
 const apiKey = Deno.env.get("OPENAI_API_KEY");

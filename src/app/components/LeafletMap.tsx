@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-
 import L, { type LatLngExpression } from "leaflet";
+import { useEffect, useMemo, useRef } from "react";
 
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import type { Restaurant } from "../service/types";

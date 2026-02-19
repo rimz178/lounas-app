@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
-import { useAuth } from "./AuthContext";
 import { supabase } from "../service/supabaseClient";
+import { useAuth } from "./AuthContext";
 
 export default function AuthButton() {
   const { user, isLoggedIn } = useAuth();

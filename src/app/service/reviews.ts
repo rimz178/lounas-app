@@ -44,28 +44,29 @@ export async function upsertReview(
       throw new Error("Arvosanan tulee olla kokonaisluku välillä 1–5.");
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("Käyttäjätietojen haku epäonnistui.");
     }
 
-    const { error } = await supabase
-      .from("reviews")
-      .upsert(
-        {
-          restaurant_id: restaurantId,
-          user_id: user.id,
-          rating,
-          comment: comment.trim() || null,
-        },
-        {
-          onConflict: "restaurant_id,user_id", 
-        },
-      );
+    const { error } = await supabase.from("reviews").upsert(
+      {
+        restaurant_id: restaurantId,
+        user_id: user.id,
+        rating,
+        comment: comment.trim() || null,
+      },
+      {
+        onConflict: "restaurant_id,user_id",
+      },
+    );
 
     if (error) {
       throw new Error(
-        `Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`
+        `Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`,
       );
     }
   } catch (error) {

@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "../service/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../components/AuthContext";
-import { supabase } from "../service/supabaseClient";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { user, isLoggedIn } = useAuth();
+  const { refreshAuth } = useAuth(); 
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,110 +19,53 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          throw new Error(error.message);
-        }
-        router.push("/"); // Ohjaa käyttäjä etusivulle kirjautumisen jälkeen
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) {
-          throw new Error(error.message);
-        }
-        alert("Tunnus luotu! Tarkista sähköpostisi vahvistuslinkin varalta.");
-        setMode("login");
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        throw new Error(error.message);
       }
+
+    
+      await refreshAuth();
+      router.push("/");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Tapahtui virhe.");
+      setError(err instanceof Error ? err.message : "Jotain meni pieleen. Yritä uudelleen.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-sm space-y-4 border rounded p-6 bg-black shadow-md">
-        {isLoggedIn ? (
-          <>
-            <h1 className="text-xl font-semibold">
-              Tervetuloa, {user?.email}!
-            </h1>
-            <button
-              type="button"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.push("/");
-              }}
-              className="w-full border rounded px-2 py-1 bg-red-600 text-white"
-            >
-              Kirjaudu ulos
-            </button>
-          </>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <h1 className="text-xl font-semibold">
-              {mode === "login" ? "Kirjaudu sisään" : "Luo tunnus"}
-            </h1>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="email">
-                Sähköposti
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="w-full border rounded px-2 py-1"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="password"
-              >
-                Salasana
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="w-full border rounded px-2 py-1"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full border rounded px-2 py-1 bg-blue-600 text-white disabled:opacity-60"
-            >
-              {loading
-                ? mode === "login"
-                  ? "Kirjaudutaan..."
-                  : "Luodaan tunnusta..."
-                : mode === "login"
-                  ? "Kirjaudu"
-                  : "Luo tunnus"}
-            </button>
-            <button
-              type="button"
-              className="text-sm underline"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            >
-              {mode === "login" ? "Luo tunnus" : "Minulla on jo tunnus"}
-            </button>
-          </form>
-        )}
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Kirjaudu sisään</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="email"
+          placeholder="Sähköposti"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border rounded px-3 py-2 w-full"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Salasana"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="border rounded px-3 py-2 w-full"
+          required
+        />
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="border rounded px-4 py-2 bg-blue-600 text-white"
+        >
+          {loading ? "Kirjaudutaan..." : "Kirjaudu"}
+        </button>
+      </form>
     </div>
   );
 }
