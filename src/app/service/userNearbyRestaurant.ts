@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
 
 import type { Restaurant } from "./types";

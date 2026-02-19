@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  getReviewStatsByRestaurant,
-  upsertReview,
   deleteUserReview,
+  getReviewStatsByRestaurant,
   getUserReview,
+  upsertReview,
 } from "../service/reviews";
-import { supabase } from "../service/supabaseClient";
+import { useAuth } from "./AuthContext";
 
 interface Restaurant {
   id: string;
@@ -34,17 +34,12 @@ export default function RestaurantList({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Uusi tila kirjautumistilalle
-  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); // Tila käyttäjän arvosteluille
+  const { isLoggedIn, user } = useAuth(); 
+  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); 
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setIsLoggedIn(!!user);
-
-      if (user) {
+      if (isLoggedIn && user) {
         const reviews: Record<string, boolean> = {};
         for (const restaurant of restaurants) {
           const userReview = await getUserReview(restaurant.id);
@@ -53,6 +48,8 @@ export default function RestaurantList({
           }
         }
         setUserReviews(reviews);
+      } else {
+        setUserReviews({});
       }
     };
 
@@ -75,7 +72,7 @@ export default function RestaurantList({
     };
 
     fetchReviews();
-  }, [restaurants]);
+  }, [restaurants, isLoggedIn, user]);
 
   const handleEdit = async (restaurantId: string) => {
     setActiveId(restaurantId);
