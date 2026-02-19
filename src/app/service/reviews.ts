@@ -40,29 +40,32 @@ export async function upsertReview(
   comment: string,
 ) {
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new Error("Arvosanan tulee olla kokonaisluku välillä 1–5.");
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("Käyttäjätietojen haku epäonnistui.");
     }
 
-    const { error } = await supabase.from("reviews").upsert(
-      {
-        restaurant_id: restaurantId,
-        user_id: user.id,
-        rating,
-        comment: comment.trim() || null,
-      },
-      {
-        onConflict: "restaurant_id,user_id",
-      },
-    );
+    const { error } = await supabase
+      .from("reviews")
+      .upsert(
+        {
+          restaurant_id: restaurantId,
+          user_id: user.id,
+          rating,
+          comment: comment.trim() || null,
+        },
+        {
+          onConflict: "restaurant_id,user_id", 
+        },
+      );
 
     if (error) {
       throw new Error(
-        `Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`,
+        `Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`
       );
     }
   } catch (error) {
@@ -84,8 +87,7 @@ export async function deleteUserReview(restaurantId: string) {
     const { error } = await supabase
       .from("reviews")
       .delete()
-      .eq("restaurant_id", restaurantId)
-      .eq("user_id", user.id);
+      .eq("restaurant_id", restaurantId);
 
     if (error) {
       throw new Error(`Arvostelun poistaminen epäonnistui: ${error.message}`);
