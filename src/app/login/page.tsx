@@ -1,13 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import {
-  supabase,
-  signInWithEmail,
-  signUpWithEmail,
-} from "../service/supabaseClient";
+import { useAuth } from "../components/AuthContext";
+import { supabase } from "../service/supabaseClient";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -15,38 +11,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isLoggedIn } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-    };
-
-    fetchUser();
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
       if (mode === "login") {
-        const { error } = await signInWithEmail(email, password);
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         if (error) {
           throw new Error(error.message);
         }
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
-        router.push("/");
+        router.push("/"); // Ohjaa käyttäjä etusivulle kirjautumisen jälkeen
       } else {
-        const { error } = await signUpWithEmail(email, password);
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
         if (error) {
           throw new Error(error.message);
         }
@@ -58,29 +45,22 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      setError("Kirjautuminen ulos epäonnistui.");
-    } else {
-      setUser(null);
-      setEmail("");
-      setPassword("");
-      alert("Olet kirjautunut ulos.");
-    }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-sm space-y-4 border rounded p-6 bg-black shadow-md">
-        {user ? (
+        {isLoggedIn ? (
           <>
-            <h1 className="text-xl font-semibold">Tervetuloa, {user.email}!</h1>
+            <h1 className="text-xl font-semibold">
+              Tervetuloa, {user?.email}!
+            </h1>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.push("/");
+              }}
               className="w-full border rounded px-2 py-1 bg-red-600 text-white"
             >
               Kirjaudu ulos

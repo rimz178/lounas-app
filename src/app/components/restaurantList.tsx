@@ -7,7 +7,7 @@ import {
   deleteUserReview,
   getUserReview,
 } from "../service/reviews";
-import { supabase } from "../service/supabaseClient";
+import { useAuth } from "./AuthContext";
 
 interface Restaurant {
   id: string;
@@ -26,6 +26,7 @@ export default function RestaurantList({
 }: {
   restaurants: Restaurant[];
 }) {
+  const { isLoggedIn } = useAuth(); // Käytä AuthContextia kirjautumistilan tarkistamiseen
   const [restaurantsWithReviews, setRestaurantsWithReviews] = useState<
     RestaurantWithReviews[]
   >([]);
@@ -34,29 +35,26 @@ export default function RestaurantList({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Uusi tila kirjautumistilalle
-  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); // Tila käyttäjän arvosteluille
+  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setIsLoggedIn(!!user);
+    if (!isLoggedIn) {
+      setUserReviews({});
+      return;
+    }
 
-      if (user) {
-        const reviews: Record<string, boolean> = {};
-        for (const restaurant of restaurants) {
-          const userReview = await getUserReview(restaurant.id);
-          if (userReview) {
-            reviews[restaurant.id] = true;
-          }
+    const fetchUserReviews = async () => {
+      const reviews: Record<string, boolean> = {};
+      for (const restaurant of restaurants) {
+        const userReview = await getUserReview(restaurant.id);
+        if (userReview) {
+          reviews[restaurant.id] = true;
         }
-        setUserReviews(reviews);
       }
+      setUserReviews(reviews);
     };
 
-    checkAuth();
+    fetchUserReviews();
 
     const fetchReviews = async () => {
       try {
@@ -75,7 +73,7 @@ export default function RestaurantList({
     };
 
     fetchReviews();
-  }, [restaurants]);
+  }, [restaurants, isLoggedIn]);
 
   const handleEdit = async (restaurantId: string) => {
     setActiveId(restaurantId);
