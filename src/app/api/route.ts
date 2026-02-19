@@ -91,29 +91,29 @@ async function runRefresh(client: OpenAI, ids?: string[]) {
     withUrl.map((r) => r.name),
   );
 
-const entries: ResultEntry[] = [];
+  const entries: ResultEntry[] = [];
 
-for (const r of withUrl) {
-  try {
-    let html = await fetchRenderedHtml(r.url);
+  for (const r of withUrl) {
+    try {
+      let html = await fetchRenderedHtml(r.url);
 
-    if (html.length > 30000) {
-      html = html.slice(0, 30000);
+      if (html.length > 30000) {
+        html = html.slice(0, 30000);
+      }
+
+      const menu = await extractMenu(client, r.name, r.url, html);
+      await insertMenu(r.id, menu);
+
+      entries.push({ id: r.id, name: r.name, url: r.url, menu });
+    } catch (e: unknown) {
+      entries.push({
+        id: r.id,
+        name: r.name,
+        url: r.url,
+        error: e instanceof Error ? e.message : "unknown error",
+      });
     }
-
-    const menu = await extractMenu(client, r.name, r.url, html);
-    await insertMenu(r.id, menu);
-
-    entries.push({ id: r.id, name: r.name, url: r.url, menu });
-  } catch (e: unknown) {
-    entries.push({
-      id: r.id,
-      name: r.name,
-      url: r.url,
-      error: e instanceof Error ? e.message : "unknown error",
-    });
   }
-}
 
   console.log("Kaikki tulokset:", entries);
   return Response.json({ ok: true, results: entries });

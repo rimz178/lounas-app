@@ -9,7 +9,7 @@ export default function HomeClient() {
     string | undefined
   >(undefined);
   const [radius, setRadius] = useState(2);
-  const { restaurants, userLocation, reload } = useNearbyRestaurants(radius);
+  const { restaurants, userLocation } = useNearbyRestaurants(radius);
 
   return (
     <>
@@ -47,7 +47,7 @@ export default function HomeClient() {
         restaurants={restaurants}
         userLocation={userLocation}
       />
-      <RestaurantList restaurants={restaurants} reload={reload} />
+      <RestaurantList restaurants={restaurants} />
     </>
   );
 }
