@@ -38,7 +38,6 @@ export default function RestaurantList({
   const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); // Tila käyttäjän arvosteluille
 
   useEffect(() => {
-    // Tarkista kirjautumistila
     const checkAuth = async () => {
       const {
         data: { user },

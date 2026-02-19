@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 export async function getReviewStatsByRestaurant(
-  ids: string[]
+  ids: string[],
 ): Promise<Record<string, { average: number; count: number }>> {
   if (!ids.length) return {};
 
@@ -18,7 +18,8 @@ export async function getReviewStatsByRestaurant(
 
     const stats: Record<string, { average: number; count: number }> = {};
     ids.forEach((id) => {
-      const reviews = data?.filter((review) => review.restaurant_id === id) || [];
+      const reviews =
+        data?.filter((review) => review.restaurant_id === id) || [];
       const total = reviews.reduce((sum, review) => sum + review.rating, 0);
       stats[id] = {
         average: reviews.length ? total / reviews.length : 0,
@@ -33,34 +34,36 @@ export async function getReviewStatsByRestaurant(
   }
 }
 
-
 export async function upsertReview(
   restaurantId: string,
   rating: number,
-  comment: string
+  comment: string,
 ) {
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("Käyttäjätietojen haku epäonnistui.");
     }
 
-    const { error } = await supabase
-      .from("reviews")
-      .upsert(
-        {
-          restaurant_id: restaurantId,
-          user_id: user.id,
-          rating,
-          comment: comment.trim() || null,
-        },
-        {
-          onConflict: "restaurant_id,user_id", 
-        }
-      );
+    const { error } = await supabase.from("reviews").upsert(
+      {
+        restaurant_id: restaurantId,
+        user_id: user.id,
+        rating,
+        comment: comment.trim() || null,
+      },
+      {
+        onConflict: "restaurant_id,user_id",
+      },
+    );
 
     if (error) {
-      throw new Error(`Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`);
+      throw new Error(
+        `Arvostelun lisääminen tai päivittäminen epäonnistui: ${error.message}`,
+      );
     }
   } catch (error) {
     console.error("Virhe lisättäessä tai päivitettäessä arvostelua:", error);
@@ -68,10 +71,12 @@ export async function upsertReview(
   }
 }
 
-
 export async function deleteUserReview(restaurantId: string) {
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("Käyttäjätietojen haku epäonnistui.");
     }
@@ -91,10 +96,12 @@ export async function deleteUserReview(restaurantId: string) {
   }
 }
 
-
 export async function getUserReview(restaurantId: string) {
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("Käyttäjätietojen haku epäonnistui.");
     }

@@ -10,7 +10,6 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
       timeout: 90_000,
     });
 
-  
     try {
       await page.waitForLoadState("networkidle", { timeout: 10_000 });
     } catch {

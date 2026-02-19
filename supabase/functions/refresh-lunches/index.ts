@@ -97,14 +97,12 @@ serve(async (req) => {
     // Jos toiminto ei ole sallittu
     return new Response(
       JSON.stringify({ error: "Unauthorized or invalid action" }),
-      { status: 403 }
+      { status: 403 },
     );
   } catch (error) {
     console.error("Error in Edge Function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
   }
 });
-

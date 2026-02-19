@@ -60,12 +60,10 @@ export function useNearbyRestaurants(radiusKm = 2) {
     setLoading(true);
 
     try {
-      // Hae ravintolat ja lounaslistat suoraan Supabasesta
       const fetchedRestaurants = await getRestaurants();
-      const ids = fetchedRestaurants.map((r: { id: string; }) => r.id);
+      const ids = fetchedRestaurants.map((r: { id: string }) => r.id);
       const menusByRestaurant = await getLatestMenusByRestaurant(ids);
 
-      // Yhdistä lounaslistat ravintoloihin
       const merged = fetchedRestaurants.map((r: Restaurant) => ({
         ...r,
         menu_text: menusByRestaurant[r.id] ?? r.menu_text,
