@@ -7,6 +7,7 @@ import {
   deleteUserReview,
   getUserReview,
 } from "../service/reviews";
+import { supabase } from "../service/supabaseClient";
 
 interface Restaurant {
   id: string;
@@ -33,8 +34,31 @@ export default function RestaurantList({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Uusi tila kirjautumistilalle
+  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); // Tila käyttäjän arvosteluille
 
   useEffect(() => {
+    // Tarkista kirjautumistila
+    const checkAuth = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+
+      if (user) {
+        const reviews: Record<string, boolean> = {};
+        for (const restaurant of restaurants) {
+          const userReview = await getUserReview(restaurant.id);
+          if (userReview) {
+            reviews[restaurant.id] = true;
+          }
+        }
+        setUserReviews(reviews);
+      }
+    };
+
+    checkAuth();
+
     const fetchReviews = async () => {
       try {
         const restaurantIds = restaurants.map((restaurant) => restaurant.id);
@@ -83,7 +107,6 @@ export default function RestaurantList({
       setActiveId(null);
       setComment("");
 
-      // Päivitä arvostelut
       const restaurantIds = restaurants.map((restaurant) => restaurant.id);
       const reviewStats = await getReviewStatsByRestaurant(restaurantIds);
       const updatedRestaurants = restaurants.map((restaurant) => ({
@@ -91,6 +114,8 @@ export default function RestaurantList({
         reviews: reviewStats[restaurant.id] || { average: 0, count: 0 },
       }));
       setRestaurantsWithReviews(updatedRestaurants);
+
+      setUserReviews((prev) => ({ ...prev, [restaurantId]: true }));
     } catch (_error) {
       setStatus("Arvostelun tallennus epäonnistui.");
     } finally {
@@ -106,6 +131,7 @@ export default function RestaurantList({
       await deleteUserReview(restaurantId);
       setStatus("Arvostelu poistettu!");
       setActiveId(null);
+
       const restaurantIds = restaurants.map((restaurant) => restaurant.id);
       const reviewStats = await getReviewStatsByRestaurant(restaurantIds);
       const updatedRestaurants = restaurants.map((restaurant) => ({
@@ -113,6 +139,7 @@ export default function RestaurantList({
         reviews: reviewStats[restaurant.id] || { average: 0, count: 0 },
       }));
       setRestaurantsWithReviews(updatedRestaurants);
+      setUserReviews((prev) => ({ ...prev, [restaurantId]: false }));
     } catch (_error) {
       setStatus("Arvostelun poisto epäonnistui.");
     } finally {
@@ -136,68 +163,81 @@ export default function RestaurantList({
           ) : (
             <p>Ei arvosteluja vielä</p>
           )}
-          {activeId === restaurant.id ? (
-            <form
-              onSubmit={(e) => handleSubmit(e, restaurant.id)}
-              className="space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <label htmlFor={`rating-${restaurant.id}`} className="text-sm">
-                  Arvosana
-                </label>
-                <select
-                  id={`rating-${restaurant.id}`}
-                  value={rating}
-                  onChange={(e) => setRating(Number(e.target.value))}
-                  className="border rounded px-2 py-1 text-sm"
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                rows={3}
-                placeholder="Kirjoita lyhyt kommentti (valinnainen)"
-                className="w-full border rounded px-2 py-1 text-sm"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-              />
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="border rounded px-3 py-1 bg-blue-600 text-white text-sm disabled:opacity-60"
-                >
-                  {submitting ? "Tallennetaan..." : "Tallenna arvostelu"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(restaurant.id)}
-                  className="border rounded px-3 py-1 bg-red-600 text-white text-sm disabled:opacity-60"
-                >
-                  {submitting ? "Poistetaan..." : "Poista arvostelu"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveId(null)}
-                  className="border rounded px-3 py-1 text-sm"
-                >
-                  Peruuta
-                </button>
-              </div>
-              {status && <p className="text-xs text-gray-300 mt-1">{status}</p>}
-            </form>
+          {isLoggedIn ? (
+            activeId === restaurant.id ? (
+              <form
+                onSubmit={(e) => handleSubmit(e, restaurant.id)}
+                className="space-y-2"
+              >
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor={`rating-${restaurant.id}`}
+                    className="text-sm"
+                  >
+                    Arvosana
+                  </label>
+                  <select
+                    id={`rating-${restaurant.id}`}
+                    value={rating}
+                    onChange={(e) => setRating(Number(e.target.value))}
+                    className="border rounded px-3 py-1 text-sm"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <textarea
+                  rows={3}
+                  placeholder="Kirjoita lyhyt kommentti (valinnainen)"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="border rounded px-3 py-1 bg-blue-600 text-white text-sm disabled:opacity-60"
+                  >
+                    {submitting ? "Tallennetaan..." : "Tallenna arvostelu"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(restaurant.id)}
+                    className="border rounded px-3 py-1 bg-red-600 text-white text-sm disabled:opacity-60"
+                  >
+                    {submitting ? "Poistetaan..." : "Poista arvostelu"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(null)}
+                    className="border rounded px-3 py-1 text-sm"
+                  >
+                    Peruuta
+                  </button>
+                </div>
+                {status && (
+                  <p className="text-xs text-gray-300 mt-1">{status}</p>
+                )}
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleEdit(restaurant.id)}
+                className="border rounded px-3 py-1 text-sm bg-gray-800 text-white"
+              >
+                {userReviews[restaurant.id]
+                  ? "Muokkaa arvostelua"
+                  : "Jätä arvostelu"}
+              </button>
+            )
           ) : (
-            <button
-              type="button"
-              onClick={() => handleEdit(restaurant.id)}
-              className="border rounded px-3 py-1 text-sm bg-gray-800 text-white"
-            >
-              Jätä arvostelu
-            </button>
+            <p className="text-sm text-gray-400">
+              Kirjaudu sisään lisätäksesi arvostelun.
+            </p>
           )}
         </div>
       ))}
