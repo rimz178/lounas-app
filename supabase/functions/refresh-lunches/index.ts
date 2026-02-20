@@ -5,17 +5,18 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { OpenAI } from "https://deno.land/x/openai/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 import { fetchRenderedHtml } from "./fetchRenderHtml.ts";
-import { extractMenu } from "./openai.ts";
-import { runRefresh } from "./supabase.ts";
 
+import { OpenAI } from "https://deno.land/x/openai/mod.ts";
+import { extractMenu } from "./openai.ts";
 // Alustetaan ympäristömuuttujat
 const apiKey = Deno.env.get("OPENAI_API_KEY");
 if (!apiKey) {
   throw new Error("OPENAI_API_KEY environment variable is not set");
 }
+
+const openai = new OpenAI(apiKey);
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -38,67 +39,45 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    const jwt = authHeader?.split("Bearer ")[1];
+    const { ids } = await req.json();
 
-    // Tarkista, onko käyttäjä todennettu
-    const isAuthenticated = jwt ? true : false;
+    // Hae ravintolatiedot Supabasesta
+    const { data: restaurants, error } = await supabase
+      .from("ravintolat")
+      .select("id, name, url")
+      .in("id", ids);
 
-    const { ids, action } = await req.json();
-
-    if (action === "getRestaurants") {
-      // Hae ravintolatiedot
-      const { data: restaurants, error } = await supabase
-        .from("ravintolat")
-        .select("id, name, lat, lng, url");
-
-      if (error) {
-        throw new Error(`Error fetching restaurants: ${error.message}`);
-      }
-
-      return new Response(JSON.stringify({ data: restaurants }), {
-        headers: { "Content-Type": "application/json" },
-      });
+    if (error) {
+      throw new Error(`Error fetching restaurants: ${error.message}`);
     }
 
-    if (action === "updateMenus" && isAuthenticated) {
-      // Päivitä lounaslistat vain todennetuille käyttäjille
-      const { data: restaurants, error } = await supabase
-        .from("ravintolat")
-        .select("id, name, url")
-        .in("id", ids);
-
-      if (error) {
-        throw new Error(`Error fetching restaurants: ${error.message}`);
-      }
-
-      const results = [];
-      for (const restaurant of restaurants) {
+    // Käsittele jokainen ravintola
+    const results = await Promise.all(
+      restaurants.map(async (restaurant) => {
         try {
+          // Hae ravintolan HTML-sisältö
           const html = await fetchRenderedHtml(restaurant.url);
-          const menu = await extractMenu(restaurant.name, restaurant.url, html);
 
+          // Lähetä HTML OpenAI:lle ja pyydä lounaslista
+          const menu = await extractMenu(openai, restaurant.name, restaurant.url, html);
+
+          // Tallenna lounaslista Supabaseen
           await supabase.from("menus").insert({
             restaurant_id: restaurant.id,
             menu_text: menu,
           });
 
-          results.push({ id: restaurant.id, menu });
+          return { id: restaurant.id, menu };
         } catch (err) {
-          results.push({ id: restaurant.id, error: err.message });
+          return { id: restaurant.id, error: err.message };
         }
-      }
-
-      return new Response(JSON.stringify({ results }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Jos toiminto ei ole sallittu
-    return new Response(
-      JSON.stringify({ error: "Unauthorized or invalid action" }),
-      { status: 403 },
+      })
     );
+
+    // Palauta tulokset
+    return new Response(JSON.stringify({ results }), {
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error in Edge Function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
