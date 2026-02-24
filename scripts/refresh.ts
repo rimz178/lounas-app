@@ -7,7 +7,7 @@ import { extractMenu } from "./extractMenu";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 );
 
 async function refresh() {
@@ -21,14 +21,18 @@ async function refresh() {
 
     console.log("Processing:", r.name);
 
-    const text = await fetchRenderedHtml(r.url);
-    const menu = await extractMenu(text);
+    try {
+      const text = await fetchRenderedHtml(r.url);
+      const menu = await extractMenu(text);
 
-    await supabase.from("menus").upsert({
-      restaurant_id: r.id,
-      content: menu,
-      updated_at: new Date().toISOString(),
-    });
+      await supabase.from("menus").insert({
+        restaurant_id: r.id,
+        menu_text: menu,
+      });
+    } catch (err) {
+      console.error(`Failed for ${r.name} (${r.url}):`, err);
+      // jatka seuraavaan ravintolaan
+    }
   }
 }
 

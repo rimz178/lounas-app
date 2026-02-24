@@ -1,17 +1,68 @@
 import { chromium } from "playwright";
 
-export async function fetchRenderedHtml(url: string) {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
+const DEFAULT_TIMEOUT_MS = 90_000;
+
+export async function fetchRenderedHtml(url: string): Promise<string> {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+
+  // Nopeuttaa ja vähentää "networkidle ei koskaan tule" -tilanteita
+  await context.route("**/*", (route) => {
+    const type = route.request().resourceType();
+    if (type === "image" || type === "font" || type === "media") {
+      return route.abort();
+    }
+    return route.continue();
+  });
+
+  const page = await context.newPage();
+  page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
+  page.setDefaultNavigationTimeout(DEFAULT_TIMEOUT_MS);
 
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60000 }); 
-    const text = await page.evaluate(() => document.body.innerText);
-    return text;
+    console.log(`Navigating to: ${url}`);
+
+
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+
+    
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {
+
+    });
+
+ 
+    await page
+      .waitForFunction(
+        () => (document.body?.innerText?.trim().length ?? 0) > 300,
+        undefined,
+        { timeout: 30_000 },
+      )
+      .catch(() => {
+        // ignore: palautetaan silti se mitä on
+      });
+
+    // Kerää teksti myös iframeista (joillain saiteilla menu voi olla framessa)
+    const chunks: string[] = [];
+    for (const frame of page.frames()) {
+      const t = await frame
+        .evaluate(() => document.body?.innerText ?? "")
+        .catch(() => "");
+      if (t.trim()) chunks.push(t.trim());
+    }
+
+    const visibleText = chunks.join("\n\n---\n\n").trim();
+    console.log(
+      `Fetched visible text for ${url}:`,
+      visibleText.substring(0, 500),
+    );
+
+    return visibleText;
   } catch (error) {
     console.error(`Error fetching URL ${url}:`, error);
-    throw error; 
+    throw error;
   } finally {
-    await browser.close();
+    await page.close().catch(() => {});
+    await context.close().catch(() => {});
+    await browser.close().catch(() => {});
   }
 }
