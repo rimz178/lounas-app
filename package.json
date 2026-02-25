@@ -18,6 +18,7 @@
     "next": "^16.1.6",
     "openai": "^6.17.0",
     "p-limit": "^7.3.0",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0"
@@ -46,7 +47,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-
   "bugs": {
     "url": "https://github.com/rimz178/lounas-app/issues"
   },

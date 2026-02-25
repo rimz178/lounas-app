@@ -14,7 +14,8 @@ async function refresh() {
   const { data: restaurants } = await supabase
     .from("ravintolat")
     .select("id, name, url")
-    .not("url", "is", null);
+    .not("url", "is", null)
+    .eq("menu_mode", "auto");
 
   for (const r of restaurants ?? []) {
     if (!r.url) continue;
@@ -31,7 +32,6 @@ async function refresh() {
       });
     } catch (err) {
       console.error(`Failed for ${r.name} (${r.url}):`, err);
-      // jatka seuraavaan ravintolaan
     }
   }
 }

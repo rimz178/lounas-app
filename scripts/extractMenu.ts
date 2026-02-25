@@ -18,21 +18,30 @@ Rules:
 - Use ONLY the provided HTML content.
 - Look for keywords like "lounas", "menu", "lounaslista", or "lounasmenu".
 - Extract only the lunch menu items and their corresponding days.
-- If the menu is in a table, extract the table content.
-- If the menu is in a list, extract the list content.
-- If the menu is in a paragraph, extract the text that mentions lunch items.
-- Ignore opening hours, addresses, prices, allergens, marketing text, and footers.
-- If no lunch menu is found, respond exactly: "No lunch menu found."
+- Structure the output by day of the week (Maanantai, Tiistai, Keskiviikko, Torstai, Perjantai). Use the Finnish day names or their abbreviations (Ma, Ti, Ke, To, Pe) as headings.
+- If a menu lists items for the whole week (e.g., "Ma-Pe" or "Koko viikon") without specifying daily dishes, distribute the first 5 main dishes to Monday-Friday, one dish per day. If there are fewer than 5, leave the remaining days empty.
+- Ignore everything else, such as opening hours, prices, allergens, marketing text, and footers.
+- If no lunch menu is found for a specific day, state that.
+- If no lunch menu is found at all, respond exactly: "No lunch menu found."
 
 Output format example:
 
-Ma:
+Maanantai:
 - Lohikeitto
 - Kasvislasagne
 
-Ti:
+Tiistai:
 - Broileripasta
 - Vegaaninen curry
+
+Keskiviikko:
+- Lihapullat ja muusi
+
+Torstai:
+- Hernekeitto ja pannukakku
+
+Perjantai:
+- Uunilohi ja perunat
 
 Language:
 - Finnish
@@ -42,12 +51,19 @@ export async function extractMenu(text: string) {
   const MAX_TOKENS = 8000; 
   const truncatedText = text.slice(0, MAX_TOKENS);
 
+  const today = new Date().toLocaleDateString("fi-FI", {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  });
+
   const completion = await openai.chat.completions.create({
     model: "gpt-4",
     temperature: 0.2,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `HTML content:\n\n${truncatedText}` },
+      { role: "user", content: `Today is ${today}. Extract the menu based on the following content:\n\n${truncatedText}` },
     ],
   });
 
