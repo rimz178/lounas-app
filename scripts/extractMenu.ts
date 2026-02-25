@@ -18,30 +18,26 @@ Rules:
 - Use ONLY the provided HTML content.
 - Look for keywords like "lounas", "menu", "lounaslista", or "lounasmenu".
 - Extract only the lunch menu items and their corresponding days.
-- Structure the output by day of the week (Maanantai, Tiistai, Keskiviikko, Torstai, Perjantai). Use the Finnish day names or their abbreviations (Ma, Ti, Ke, To, Pe) as headings.
-- If a menu lists items for the whole week (e.g., "Ma-Pe" or "Koko viikon") without specifying daily dishes, distribute the first 5 main dishes to Monday-Friday, one dish per day. If there are fewer than 5, leave the remaining days empty.
+- Structure the output by day of the week (Maanantai, Tiistai, etc.) or as a weekly list.
+- If a menu lists items for the whole week (e.g., "Ma-Pe" or "Koko viikon"), list all those dishes under a single "Ma-Pe" heading. Do NOT distribute them to individual days.
+- If the menu has specific dishes for specific days (e.g., a "Maanantai" section), list them under that day.
 - Ignore everything else, such as opening hours, prices, allergens, marketing text, and footers.
-- If no lunch menu is found for a specific day, state that.
 - If no lunch menu is found at all, respond exactly: "No lunch menu found."
 
-Output format example:
+Output format example for a weekly menu:
+
+Ma-Pe:
+- Karjalanpaisti
+- Paahdettua lohta
+- Spicy chicken
+
+Output format example for daily menus:
 
 Maanantai:
 - Lohikeitto
-- Kasvislasagne
-
-Tiistai:
-- Broileripasta
-- Vegaaninen curry
-
-Keskiviikko:
-- Lihapullat ja muusi
 
 Torstai:
 - Hernekeitto ja pannukakku
-
-Perjantai:
-- Uunilohi ja perunat
 
 Language:
 - Finnish
