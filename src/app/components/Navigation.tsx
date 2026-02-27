@@ -13,7 +13,7 @@ export default function Navigation() {
   return (
     <nav className="flex gap-4 p-4 bg-black-100 border-b">
       <Link href="/">Etusivu</Link>
-      {isAdmin && <Link href="/hallinta">Hallinta</Link>}
+      {isAdmin && <Link href="/admin">Hallinta</Link>}
       <div className="ml-auto">
         <AuthButton />
       </div>
