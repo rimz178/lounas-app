@@ -1,19 +1,11 @@
-import { chromium } from "playwright";
+import type { BrowserContext } from "playwright";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
 
-export async function fetchRenderedHtml(url: string): Promise<string> {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-
-  await context.route("**/*", (route) => {
-    const type = route.request().resourceType();
-    if (type === "image" || type === "font" || type === "media") {
-      return route.abort();
-    }
-    return route.continue();
-  });
-
+export async function fetchRenderedHtml(
+  context: BrowserContext,
+  url: string,
+): Promise<string> {
   const page = await context.newPage();
   page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(DEFAULT_TIMEOUT_MS);
@@ -21,30 +13,22 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
   try {
     console.log(`Navigating to: ${url}`);
 
-
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
+    await page.waitForSelector("div.lunch-block, .menu-item, .lounas-lista", { timeout: 15_000 }).catch(() => {
+        console.log("Did not find a specific menu element, continuing with what we have.");
+    });
     
     await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {
-
+      console.log(`networkidle timeout for ${url}, continuing...`);
     });
 
- 
-    await page
-      .waitForFunction(
-        () => (document.body?.innerText?.trim().length ?? 0) > 300,
-        undefined,
-        { timeout: 30_000 },
-      )
-      .catch(() => {
-
-      });
     const chunks: string[] = [];
     for (const frame of page.frames()) {
-      const t = await frame
-        .evaluate(() => document.body?.innerText ?? "")
+      const text = await frame
+        .evaluate(() => document.body?.innerText || document.body?.textContent || "")
         .catch(() => "");
-      if (t.trim()) chunks.push(t.trim());
+      if (text.trim()) chunks.push(text.trim());
     }
 
     const visibleText = chunks.join("\n\n---\n\n").trim();
@@ -56,10 +40,8 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
     return visibleText;
   } catch (error) {
     console.error(`Error fetching URL ${url}:`, error);
-    throw error;
+    return ""; // Palauta tyhjä merkkijono virhetilanteessa
   } finally {
-    await page.close().catch(() => {});
-    await context.close().catch(() => {});
-    await browser.close().catch(() => {});
+    await page.close(); // Suljetaan vain sivu, ei koko selainta
   }
 }

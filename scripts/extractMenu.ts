@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });;
+dotenv.config({ path: ".env.local" });
 import { OpenAI } from "openai";
 
 const apiKey = process.env.OPENAI_KEY;
@@ -44,8 +44,8 @@ Language:
 `;
 
 export async function extractMenu(text: string) {
-  const MAX_TOKENS = 8000; 
-  const truncatedText = text.slice(0, MAX_TOKENS);
+  const MAX_CHARS = 8000; 
+  const truncatedText = text.slice(0, MAX_CHARS);
 
   const today = new Date().toLocaleDateString("fi-FI", {
     weekday: 'long',

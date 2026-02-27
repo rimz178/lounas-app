@@ -1,48 +1,73 @@
+import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { chromium } from "playwright";
+import { extractMenu } from "./extractMenu";
+import { fetchRenderedHtml } from "./fetchRenderedHtml";
+
 dotenv.config({ path: ".env.local" });
 
-import { createClient } from "@supabase/supabase-js";
-import { fetchRenderedHtml } from "./fetchRenderedHtml";
-import { extractMenu } from "./extractMenu";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-);
+if (!supabaseUrl) {
+  throw new Error(
+    "Environment variable NEXT_PUBLIC_SUPABASE_URL is not set. Please define it in .env.local before running this script.",
+  );
+}
+if (!supabaseServiceRoleKey) {
+  throw new Error(
+    "Environment variable SUPABASE_SERVICE_ROLE_KEY is not set. Please define it in .env.local before running this script.",
+  );
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 async function refresh() {
-  const { data: restaurants } = await supabase
-    .from("ravintolat")
-    .select("id, name, url")
-    .not("url", "is", null)
-    .eq("menu_mode", "auto");
+  // Käynnistä selain kerran
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
 
-  for (const r of restaurants ?? []) {
-    if (!r.url) continue;
+  try {
+    const { data: restaurants, error } = await supabase
+      .from("ravintolat")
+      .select("id, name, url")
+      .not("url", "is", null)
+      .eq("menu_mode", "auto");
 
-    console.log("Processing:", r.name);
-
-    try {
-      const text = await fetchRenderedHtml(r.url);
-      const menu = await extractMenu(text);
-
-      // Poista ensin vanhat menut tältä ravintolalta varmistaaksesi,ut tältä ravintolalta varmistaaksesi,
-      // että vanhentunutta dataa ei jää.
-      await supabase.from("menus").delete().eq("restaurant_id", r.id);
-
-      // Lisää uusi menu vain, jos se ei ole tyhjä.
-      // Näin eilinen lista ei jää kummittelemaan, jos uutta ei löydy.
-      if (menu && menu !== "No lunch menu found.") {
-        await supabase.from("menus").insert({
-          restaurant_id: r.id,
-          menu_text: menu,
-        });
-      } else {
-        console.log(`No new menu found for ${r.name}, old menu cleared.`);
-      }
-    } catch (err) {
-      console.error(`Failed for ${r.name} (${r.url}):`, err);
+    if (error) {
+      console.error("Failed to fetch restaurants:", error);
+      throw error;
     }
+
+    for (const r of restaurants ?? []) {
+      if (!r.url) continue;
+      console.log("Processing:", r.name);
+
+      try {
+        // Välitä selainkonteksti funktiolle
+        const text = await fetchRenderedHtml(context, r.url);
+        const menu = await extractMenu(text);
+
+        const { error: upsertError } = await supabase.from("menus").upsert(
+          {
+            restaurant_id: r.id,
+            menu_text: menu,
+          },
+          { onConflict: "restaurant_id" },
+        );
+
+        if (upsertError) {
+          console.error(
+            `Supabase upsert failed for ${r.name}:`,
+            upsertError.message,
+          );
+        }
+      } catch (err) {
+        console.error(`Failed for ${r.name} (${r.url}):`, err);
+      }
+    }
+  } finally {
+    await browser.close();
   }
 }
 
