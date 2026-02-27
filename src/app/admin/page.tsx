@@ -44,7 +44,6 @@ export default function Hallinta() {
   }, [selected, menus]);
 
   async function handleSave() {
-
     const { error } = await supabase.from("menus").upsert({
       restaurant_id: selected,
       menu_text: menu,
@@ -93,7 +92,9 @@ export default function Hallinta() {
         Päivitä ruokalistat OpenAI:lla
       </button>
       {updateStatus === "loading" && <p>Päivitetään...</p>}
-      {updateStatus === "success" && <p>Päivitys valmis!</p>}
+      {updateStatus === "success" && (
+        <p>Päivitys käynnistetty! Tämä voi kestää hetken.</p>
+      )}
       {updateStatus === "error" && <p>Päivitys epäonnistui.</p>}
 
       <hr style={{ margin: "2em 0" }} />
