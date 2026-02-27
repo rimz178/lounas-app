@@ -1,0 +1,32 @@
+# filepath: .github/workflows/refresh-lunches.yml
+name: Refresh Lunch Menus
+
+on:
+  schedule:
+    # Ajetaan joka päivä klo 05:00 UTC (klo 07:00 Suomen aikaa)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    # Tämä mahdollistaa manuaalisen käynnistyksen GitHubin Actions-välilehdeltä
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run refresh script
+        run: npx tsx scripts/refresh.ts
+        env:
+          # Lisää nämä arvot GitHubin salaisuuksiin
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
