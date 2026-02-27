@@ -1,5 +1,4 @@
-import { supabaseServer } from "../lib/supabaseServerClient";
-
+import { supabase } from "./supabaseClient";
 export async function insertMenu(
   restaurantId: string,
   menuText: string,
@@ -9,7 +8,7 @@ export async function insertMenu(
     return false;
   }
 
-  const { data: existing, error: existingError } = await supabaseServer
+  const { data: existing, error: existingError } = await supabase
     .from("menus")
     .select("id, menu_text")
     .eq("restaurant_id", restaurantId)
@@ -21,7 +20,7 @@ export async function insertMenu(
     return false;
   }
 
-  const { error } = await supabaseServer
+  const { error } = await supabase
     .from("menus")
     .insert({ restaurant_id: restaurantId, menu_text: text });
 

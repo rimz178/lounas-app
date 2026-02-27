@@ -7,15 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "refresh": "tsx scripts/refresh.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.91.0",
+    "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
     "lru-cache": "^11.2.6",
     "next": "^16.1.6",
     "openai": "^6.17.0",
     "p-limit": "^7.3.0",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0"
@@ -31,6 +34,21 @@
     "playwright": "^1.58.2",
     "supabase": "^2.76.9",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
-  }
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rimz178/lounas-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rimz178/lounas-app/issues"
+  },
+  "homepage": "https://github.com/rimz178/lounas-app#readme"
 }
