@@ -26,17 +26,20 @@ async function refresh() {
       const text = await fetchRenderedHtml(r.url);
       const menu = await extractMenu(text);
 
-      // Käytä upsert-toimintoa:
-      // - Jos ravintolalle (restaurant_id) on jo olemassa menu, se päivitetään.
-      // - Jos ei ole, luodaan uusi.
-      // Tämä ei koske manuaalisesti lisättyjä, koska ne on suodatettu pois aiemmin.
-      await supabase.from("menus").upsert(
-        {
+      // Poista ensin vanhat menut tältä ravintolalta varmistaaksesi,ut tältä ravintolalta varmistaaksesi,
+      // että vanhentunutta dataa ei jää.
+      await supabase.from("menus").delete().eq("restaurant_id", r.id);
+
+      // Lisää uusi menu vain, jos se ei ole tyhjä.
+      // Näin eilinen lista ei jää kummittelemaan, jos uutta ei löydy.
+      if (menu && menu !== "No lunch menu found.") {
+        await supabase.from("menus").insert({
           restaurant_id: r.id,
           menu_text: menu,
-        },
-        { onConflict: "restaurant_id" },
-      );
+        });
+      } else {
+        console.log(`No new menu found for ${r.name}, old menu cleared.`);
+      }
     } catch (err) {
       console.error(`Failed for ${r.name} (${r.url}):`, err);
     }
