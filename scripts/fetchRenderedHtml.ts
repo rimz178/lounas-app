@@ -6,7 +6,6 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
 
-  // Nopeuttaa ja vähentää "networkidle ei koskaan tule" -tilanteita
   await context.route("**/*", (route) => {
     const type = route.request().resourceType();
     if (type === "image" || type === "font" || type === "media") {
@@ -38,10 +37,8 @@ export async function fetchRenderedHtml(url: string): Promise<string> {
         { timeout: 30_000 },
       )
       .catch(() => {
-        // ignore: palautetaan silti se mitä on
-      });
 
-    // Kerää teksti myös iframeista (joillain saiteilla menu voi olla framessa)
+      });
     const chunks: string[] = [];
     for (const frame of page.frames()) {
       const t = await frame
