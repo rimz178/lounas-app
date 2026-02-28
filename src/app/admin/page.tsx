@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../service/supabaseClient";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export default function Hallinta() {
   // Tilat
@@ -13,10 +14,12 @@ export default function Hallinta() {
   type Menu = {
     restaurant_id: string;
     menu_text: string;
+    date: string;
   };
   const [menus, setMenus] = useState<Menu[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [menu, setMenu] = useState<string>("");
+  const [valittuPaiva, setValittuPaiva] = useState<string>("");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -31,7 +34,7 @@ export default function Hallinta() {
       .then(({ data }) => setRestaurants(data || []));
     supabase
       .from("menus")
-      .select("restaurant_id, menu_text")
+      .select("restaurant_id, menu_text, date")
       .then(({ data }) => setMenus(data || []));
   }, []);
 
@@ -44,28 +47,60 @@ export default function Hallinta() {
   }, [selected, menus]);
 
   async function handleSave() {
-    const { error } = await supabase.from("menus").upsert({
-      restaurant_id: selected,
-      menu_text: menu,
-    });
+    setStatus("loading");
+    // Tarkista onko menu jo olemassa
+    const existing = menus.find(
+      (m) => m.restaurant_id === selected && m.date === valittuPaiva,
+    );
 
+    let error: PostgrestError | null = null;
+    if (existing) {
+      // Päivitä olemassa oleva menu
+      const { error: updateError } = await supabase
+        .from("menus")
+        .upsert(
+          { restaurant_id: selected, menu_text: menu, date: valittuPaiva },
+          { onConflict: ["restaurant_id", "date"] },
+        );
+      error = updateError;
+    } else {
+      // Lisää uusi menu
+      const { error: insertError } = await supabase
+        .from("menus")
+        .insert({
+          restaurant_id: selected,
+          menu_text: menu,
+          date: valittuPaiva,
+        });
+      error = insertError;
+    }
+
+    // Päivitä ravintolat-taulun menu_mode
     await supabase
       .from("ravintolat")
       .update({ menu_mode: "manual" })
       .eq("id", selected);
 
     if (!error) {
+      setStatus("success");
+      // Päivitä paikallinen tila, jotta uusi menu näkyy heti
       setMenus((prev) => {
-        const idx = prev.findIndex((m) => m.restaurant_id === selected);
+        const idx = prev.findIndex(
+          (m) => m.restaurant_id === selected && m.date === valittuPaiva,
+        );
         if (idx > -1) {
           const copy = [...prev];
-          copy[idx] = { ...copy[idx], menu_text: menu };
+          copy[idx] = { ...copy[idx], menu_text: menu, date: valittuPaiva };
           return copy;
         }
-        return [...prev, { restaurant_id: selected, menu_text: menu }];
+        return [
+          ...prev,
+          { restaurant_id: selected, menu_text: menu, date: valittuPaiva },
+        ];
       });
+    } else {
+      setStatus("error");
     }
-    setStatus(error ? "error" : "success");
   }
 
   async function handleUpdate() {
@@ -116,6 +151,14 @@ export default function Hallinta() {
       {selected && (
         <div style={{ marginTop: 16 }}>
           <h2>Muokkaa ruokalistaa:</h2>
+          <label htmlFor="date-input">Valitse päivämäärä:</label>
+          <input
+            id="date-input"
+            type="date"
+            value={valittuPaiva}
+            onChange={(e) => setValittuPaiva(e.target.value)}
+            style={{ display: "block", marginBottom: 8 }}
+          />
           <textarea
             value={menu}
             onChange={(e) => setMenu(e.target.value)}
@@ -126,12 +169,12 @@ export default function Hallinta() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={status === "loading" || !menu.trim()}
+            disabled={status === "loading" || !menu.trim() || !valittuPaiva}
             className="p-2 bg-green-600 text-white rounded"
           >
             Tallenna ruokalista
           </button>
-          {status === "success" && <p>Päivitys valmis!</p>}
+          {status === "success" && <p>Menu päivitetty onnistuneesti!</p>}
           {status === "error" && <p>Päivitys epäonnistui.</p>}
         </div>
       )}
