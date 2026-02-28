@@ -2,9 +2,9 @@
 name: Refresh Lunch Menus
 
 on:
-  schedule:
-    # Ajetaan joka päivä klo 05:00 UTC (klo 07:00 Suomen aikaa)
-    - cron: '0 5 * * *'
+  # schedule:
+  #   # Ajetaan joka päivä klo 05:00 UTC (klo 07:00 Suomen aikaa)
+  #   - cron: '0 5 * * *'
   workflow_dispatch:
     # Tämä mahdollistaa manuaalisen käynnistyksen GitHubin Actions-välilehdeltä
 
