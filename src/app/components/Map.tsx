@@ -24,16 +24,16 @@ type Props = {
 const LeafletMap = dynamic<Props>(() => import("./LeafletMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full min-h-[320px] h-[60vh] max-h-[520px] rounded-lg border bg-white shadow-sm" />
+    <div className="w-full h-[320px] min-h-[60vh] max-h-[520px] rounded-lg border bg-white shadow-sm" />
   ),
 });
 
 export default function RestaurantMap(props: Props) {
   return (
     <section className="w-full">
-      <div className="mx-auto max-w-5xl px-4 py-6">
+      <div className="mx-auto max-w-7xl px-4 py-6">
         <h2 className="mb-3 text-lg font-semibold">Kartta</h2>
-        <div className="h-[400px] rounded-lg overflow-hidden">
+        <div className="w-[90vw] max-w-7xl h-[70vh] rounded-lg overflow-hidden mx-auto mt-2">
           <LeafletMap {...props} />
         </div>
       </div>

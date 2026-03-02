@@ -13,7 +13,7 @@ export default function HomeClient() {
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2 px-4 md:px-8">
+      <div className="mt-2 mb-1 flex items-center gap-2 px-4 md:px-9">
         <label htmlFor="radius" className="font-medium">
           Näytä ravintolat säteellä
         </label>
@@ -37,7 +37,7 @@ export default function HomeClient() {
               return clamped;
             });
           }}
-          className="border rounded px-2 py-1 w-16"
+          className="border rounded px-3 py-1 w-16"
         />
         <span>km</span>
       </div>
