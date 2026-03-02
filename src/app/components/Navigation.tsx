@@ -11,9 +11,23 @@ export default function Navigation() {
   const isAdmin = isLoggedIn && profile?.role === "admin";
 
   return (
-    <nav className="flex gap-4 p-4 bg-black-100 border-b">
-      <Link href="/">Etusivu</Link>
-      {isAdmin && <Link href="/admin">Hallinta</Link>}
+    <nav className="w-full bg-neutral-900 py-4 flex items-center px-8">
+      <div className="flex items-center space-x-8">
+        <Link
+          href="/"
+          className="text-white text-lg font-semibold hover:text-red-500 transition"
+        >
+          Etusivu
+        </Link>
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="text-white text-lg font-semibold hover:text-red-500 transition"
+          >
+            Hallinta
+          </Link>
+        )}
+      </div>
       <div className="ml-auto">
         <AuthButton />
       </div>
