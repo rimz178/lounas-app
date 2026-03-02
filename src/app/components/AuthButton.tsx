@@ -5,7 +5,7 @@ import { supabase } from "../service/supabaseClient";
 import { useAuth } from "./AuthContext";
 
 export default function AuthButton() {
-  const { user, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -22,21 +22,18 @@ export default function AuthButton() {
   return (
     <div className="flex items-center space-x-4">
       {isLoggedIn ? (
-        <>
-          <p className="text-sm">Kirjautunut: {user?.email}</p>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="border rounded px-3 py-1 bg-red-600 text-white"
-          >
-            Kirjaudu ulos
-          </button>
-        </>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="bg-transparent border-none text-white text-lg font-normal hover:text-red-500 transition shadow-none px-0 py-0"
+        >
+          Kirjaudu ulos
+        </button>
       ) : (
         <button
           type="button"
           onClick={() => router.push("/login")}
-          className="border rounded px-3 py-1 bg-blue-600 text-white"
+          className="bg-transparent border-none text-white text-lg font-normal hover:text-red-500 transition shadow-none px-0 py-0"
         >
           Kirjaudu sisään
         </button>
