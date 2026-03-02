@@ -1,19 +1,23 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { supabase } from "../service/supabaseClient";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
+import { supabase } from "../service/supabaseClient";
+import { useRouter } from "next/navigation";
+import { useProfile } from "../service/useProfile"; // tai mistä hook tulee
+
+type Restaurant = {
+  id: string;
+  name: string;
+};
+type Menu = {
+  id: string;
+  restaurant_id: string;
+  menu_text: string;
+};
 
 export default function Hallinta() {
-  type Restaurant = {
-    id: string;
-    name: string;
-  };
-  type Menu = {
-    id: string;
-    restaurant_id: string;
-    menu_text: string;
-  };
+  const router = useRouter();
+  const profile = useProfile();
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -25,6 +29,12 @@ export default function Hallinta() {
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
+
+  useEffect(() => {
+    if (profile && profile.role !== "admin") {
+      router.replace("/");
+    }
+  }, [profile, router]);
 
   useEffect(() => {
     supabase
@@ -45,13 +55,20 @@ export default function Hallinta() {
     }
   }, [selected, menus]);
 
+  if (!profile) {
+    return <p>Ei oikeuksia palaa etusivulle</p>;
+  }
+  if (profile.role !== "admin") {
+    router.replace("/");
+    return null;
+  }
+
   async function handleSave() {
     setStatus("loading");
     const existing = menus.find((m) => m.restaurant_id === selected);
 
     let error: PostgrestError | null = null;
     if (existing) {
-      // Päivitä olemassa oleva menu
       const { error: updateError } = await supabase
         .from("menus")
         .upsert(
@@ -60,7 +77,6 @@ export default function Hallinta() {
         );
       error = updateError;
     } else {
-      // Lisää uusi menu
       const { error: insertError } = await supabase.from("menus").insert({
         restaurant_id: selected,
         menu_text: menu,
@@ -68,13 +84,22 @@ export default function Hallinta() {
       error = insertError;
     }
 
-    // Päivitä ravintolat-taulun menu_mode
     await supabase
       .from("ravintolat")
       .update({ menu_mode: "manual" })
       .eq("id", selected);
 
+    let ravintolatError: PostgrestError | null = null;
+
     if (!error) {
+      const { error: updateModeError } = await supabase
+        .from("ravintolat")
+        .update({ menu_mode: "manual" })
+        .eq("id", selected);
+      ravintolatError = updateModeError;
+    }
+
+    if (!error && !ravintolatError) {
       setStatus("success");
       setMenus((prev) => {
         const idx = prev.findIndex((m) => m.restaurant_id === selected);
@@ -94,13 +119,18 @@ export default function Hallinta() {
   }
 
   async function handleUpdate() {
-    setUpdateStatus("loading");
-    try {
-      const res = await fetch("/api/refresh-lunches", { method: "POST" });
-      setUpdateStatus(res.ok ? "success" : "error");
-    } catch {
-      setUpdateStatus("error");
-    }
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+
+    const res = await fetch("/api/refresh-lunches", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    setUpdateStatus(res.ok ? "success" : "error");
   }
 
   return (

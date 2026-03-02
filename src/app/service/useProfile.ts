@@ -18,10 +18,17 @@ export function useProfile() {
     }
     supabase
       .from("profiles")
-      .select("*")
+      .select("id, role")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => setProfile(data));
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Failed to fetch profile:", error);
+          setProfile(null);
+          return;
+        }
+        setProfile(data as Profile | null);
+      });
   }, [user]);
 
   return profile;
