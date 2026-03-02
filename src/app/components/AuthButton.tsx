@@ -13,6 +13,8 @@ export default function AuthButton() {
     if (error) {
       alert("Kirjautuminen ulos epäonnistui.");
     } else {
+      router.replace("/");
+      router.refresh();
       alert("Olet kirjautunut ulos.");
     }
   };

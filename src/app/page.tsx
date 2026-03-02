@@ -1,4 +1,4 @@
-import AuthButton from "./components/AuthButton";
+
 import HomeClient from "./components/HomeClient";
 
 export default function Home() {
@@ -6,7 +6,6 @@ export default function Home() {
     <div className="min-h-screen">
       <div className="p-4 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Lounas Tänään</h1>
-        <AuthButton />
       </div>
       <HomeClient />
     </div>
