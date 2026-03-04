@@ -34,8 +34,8 @@ export default function RestaurantList({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const { isLoggedIn, user } = useAuth(); 
-  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({}); 
+  const { isLoggedIn, user } = useAuth();
+  const [userReviews, setUserReviews] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -144,20 +144,22 @@ export default function RestaurantList({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 sm:pt-8">
       {restaurantsWithReviews.map((restaurant) => (
         <div
           key={restaurant.id}
-          className="border p-4 rounded shadow-md bg-gray-900"
+          className="bg-white rounded-[2.5rem] shadow-lg border border-gray-200 p-4 sm:p-6 lg:p-8 flex flex-col justify-between min-h-[180px]"
         >
-          <h2 className="text-lg font-bold">{restaurant.name}</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+            {restaurant.name}
+          </h2>
           {restaurant.reviews && restaurant.reviews.count > 0 ? (
-            <p>
+            <p className="text-gray-700 mb-2">
               Keskiarvo: {restaurant.reviews.average.toFixed(1)} (
               {restaurant.reviews.count} arvostelua)
             </p>
           ) : (
-            <p>Ei arvosteluja vielä</p>
+            <p className="text-gray-400 mb-2">Ei arvosteluja vielä</p>
           )}
           {isLoggedIn ? (
             activeId === restaurant.id ? (
@@ -223,7 +225,7 @@ export default function RestaurantList({
               <button
                 type="button"
                 onClick={() => handleEdit(restaurant.id)}
-                className="border rounded px-3 py-1 text-sm bg-gray-800 text-white"
+                className="border rounded px-3 py-1 text-sm bg-gray-100 text-gray-900 hover:bg-gray-200"
               >
                 {userReviews[restaurant.id]
                   ? "Muokkaa arvostelua"

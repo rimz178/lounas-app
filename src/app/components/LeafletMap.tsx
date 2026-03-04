@@ -123,7 +123,7 @@ export default function LeafletMap({
   }, [selectedRestaurantId, restaurantsToUse]);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+    <div className="w-full h-[300px] sm:h-[400px] lg:h-[70vh] rounded-lg overflow-hidden mx-auto mt-2">
       <MapContainer
         center={
           userLocationToUse
@@ -131,7 +131,7 @@ export default function LeafletMap({
             : HELSINKI_CENTER
         }
         zoom={14}
-        className="w-full min-h-[320px] h-[60vh] max-h-[520px]"
+        className="w-full h-full rounded-lg"
       >
         <UserLocationController
           userLocation={userLocationToUse}

@@ -2,22 +2,8 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #706d6d;
-    --foreground: #ededed;
-  }
+  --background: #f7f3ef;
+  --foreground: #222;
 }
 
 body {
