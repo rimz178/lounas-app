@@ -24,7 +24,7 @@ type Props = {
 const LeafletMap = dynamic<Props>(() => import("./LeafletMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[320px] min-h-[60vh] max-h-[520px] rounded-lg border bg-white shadow-sm" />
+    <div className="w-full h-full rounded-lg border bg-white shadow-sm" />
   ),
 });
 

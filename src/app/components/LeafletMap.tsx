@@ -131,7 +131,7 @@ export default function LeafletMap({
             : HELSINKI_CENTER
         }
         zoom={14}
-        className="w-full h-[70vh] rounded-lg"
+        className="w-full h-full rounded-lg"
       >
         <UserLocationController
           userLocation={userLocationToUse}

@@ -23,7 +23,14 @@ export default function HomeClient() {
           min={1}
           max={30}
           value={radius}
-          onChange={(e) => setRadius(Number(e.target.value))}
+          onChange={(e) => {
+            const { value } = e.target;
+            if (value === "") return;
+            const parsed = parseInt(value, 10);
+            if (Number.isNaN(parsed)) return;
+            const clamped = Math.min(30, Math.max(1, parsed));
+            setRadius(clamped);
+          }}
           className="w-16 px-2 py-1 border rounded text-base"
         />
         <span className="text-base sm:text-lg">km</span>
