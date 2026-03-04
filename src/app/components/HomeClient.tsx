@@ -13,33 +13,20 @@ export default function HomeClient() {
 
   return (
     <>
-      <div className="mt-2 mb-1 flex items-center gap-2 px-4 md:px-9">
-        <label htmlFor="radius" className="font-medium">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 mt-4">
+        <label htmlFor="radius" className="text-base sm:text-lg font-semibold">
           Näytä ravintolat säteellä
         </label>
         <input
           id="radius"
           type="number"
           min={1}
-          max={20}
+          max={30}
           value={radius}
-          onChange={(e) => {
-            const { value } = e.target;
-            setRadius((prevRadius) => {
-              if (value === "") {
-                return prevRadius;
-              }
-              const parsed = parseInt(value, 10);
-              if (Number.isNaN(parsed)) {
-                return prevRadius;
-              }
-              const clamped = Math.min(20, Math.max(1, parsed));
-              return clamped;
-            });
-          }}
-          className="border rounded px-3 py-1 w-16"
+          onChange={(e) => setRadius(Number(e.target.value))}
+          className="w-16 px-2 py-1 border rounded text-base"
         />
-        <span>km</span>
+        <span className="text-base sm:text-lg">km</span>
       </div>
       <RestaurantMap
         selectedRestaurantId={selectedRestaurantId}

@@ -3,11 +3,11 @@ import Navigation from "./components/Navigation";
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <header className="w-full bg-neutral-900 py-20 flex flex-col items-center justify-center">
-        <h1 className="text-7xl font-bold text-center mb-4 text-white">
+      <header className="w-full bg-neutral-900 py-8 sm:py-16 flex flex-col items-center justify-center">
+        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-center mb-2 text-white">
           Lounas Tänään
         </h1>
-        <p className="text-3xl text-center text-white">
+        <p className="text-lg sm:text-2xl lg:text-3xl text-center text-white">
           Lounastänään.fi – löydä päivän lounas!
         </p>
       </header>

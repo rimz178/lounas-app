@@ -33,7 +33,7 @@ export default function RestaurantMap(props: Props) {
     <section className="w-full">
       <div className="mx-auto max-w-7xl px-4 py-6">
         <h2 className="mb-3 text-lg font-semibold">Kartta</h2>
-        <div className="w-[90vw] max-w-7xl h-[70vh] rounded-lg overflow-hidden mx-auto mt-2">
+        <div className="w-full h-[250px] sm:h-[400px] lg:h-[70vh] rounded-lg overflow-hidden mx-auto mt-2 mb-4">
           <LeafletMap {...props} />
         </div>
       </div>

@@ -144,13 +144,13 @@ export default function RestaurantList({
   };
 
   return (
-    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 py-8">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 sm:pt-8">
       {restaurantsWithReviews.map((restaurant) => (
         <div
           key={restaurant.id}
-          className="bg-gray rounded-[2.5rem] shadow-lg border border-gray-200 p-8 flex flex-col justify-between min-h-[220px]"
+          className="bg-white rounded-[2.5rem] shadow-lg border border-gray-200 p-4 sm:p-6 lg:p-8 flex flex-col justify-between min-h-[180px]"
         >
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
             {restaurant.name}
           </h2>
           {restaurant.reviews && restaurant.reviews.count > 0 ? (

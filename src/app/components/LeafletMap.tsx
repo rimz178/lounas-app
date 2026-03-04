@@ -123,7 +123,7 @@ export default function LeafletMap({
   }, [selectedRestaurantId, restaurantsToUse]);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+    <div className="w-full h-[300px] sm:h-[400px] lg:h-[70vh] rounded-lg overflow-hidden mx-auto mt-2">
       <MapContainer
         center={
           userLocationToUse
