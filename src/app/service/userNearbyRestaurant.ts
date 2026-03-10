@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
+import { getReviewStatsByRestaurant } from "./reviews";
 
 import type { Restaurant } from "./types";
 
@@ -63,10 +64,13 @@ export function useNearbyRestaurants(radiusKm = 2) {
       const fetchedRestaurants = await getRestaurants();
       const ids = fetchedRestaurants.map((r: { id: string }) => r.id);
       const menusByRestaurant = await getLatestMenusByRestaurant(ids);
+      const reviewStats = await getReviewStatsByRestaurant(ids);
 
       const merged = fetchedRestaurants.map((r: Restaurant) => ({
         ...r,
         menu_text: menusByRestaurant[r.id] ?? r.menu_text,
+        averageRating: reviewStats[r.id]?.average,
+        reviewCount: reviewStats[r.id]?.count ?? 0,
       }));
 
       setRestaurants(merged);

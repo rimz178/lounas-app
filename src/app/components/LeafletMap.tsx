@@ -2,22 +2,10 @@
 
 import L, { type LatLngExpression } from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
-
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import type { Restaurant } from "../service/types";
 
 const leafletVersion = "1.9.4";
-
-/**
- * LeafletMap renders an interactive map with restaurant markers.
- *
- * @param {Object} props - Component props
- * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (if any)
- * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant marker is selected
- * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display as markers
- * @param {Object} [props.userLocation] - The user's location (if any)
- * @returns {JSX.Element} The rendered map component
- */
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: `https://unpkg.com/leaflet@${leafletVersion}/dist/images/marker-icon-2x.png`,
@@ -150,6 +138,8 @@ export default function LeafletMap({
 
         {restaurantsToUse.map((r) => {
           const position: LatLngExpression = [r.lat, r.lng];
+          const previewItems = parseMenuItems(r.menu_text, 2);
+
           return (
             <Marker
               key={r.id}
@@ -164,19 +154,55 @@ export default function LeafletMap({
               }}
             >
               <Popup>
-                <strong>{r.name}</strong>
+                <div className="min-w-[220px] max-w-[280px] space-y-2">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {r.name}
+                  </h3>
 
-                {typeof r.averageRating === "number" && (
-                  <div style={{ margin: "4px 2px", fontSize: 12 }}>
-                    Arvosana {r.averageRating.toFixed(1)}/5 (
-                    {r.reviewCount ?? 0})
+                  {typeof r.averageRating === "number" &&
+                  (r.reviewCount ?? 0) > 0 ? (
+                    <p className="text-xs text-slate-700">
+                      Arvosana {r.averageRating.toFixed(1)}/5 (
+                      {r.reviewCount ?? 0} arvostelua)
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Ei arvosteluja vielä
+                    </p>
+                  )}
+
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-500">
+                      Päivän nosto
+                    </p>
+
+                    {previewItems.length > 0 ? (
+                      <ul className="space-y-1">
+                        {previewItems.map((item) => (
+                          <li
+                            key={item}
+                            className="text-sm font-medium text-slate-900"
+                          >
+                            • {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">
+                        Ei lounaslistaa saatavilla
+                      </p>
+                    )}
                   </div>
-                )}
 
-                {renderMenuList(r.menu_text, 6, r.id)}
-                <a href={r.url} target="_blank" rel="noreferrer">
-                  Avaa ravintolan sivut
-                </a>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block text-sm font-medium text-blue-700 hover:underline"
+                  >
+                    Avaa ravintolan sivut
+                  </a>
+                </div>
               </Popup>
             </Marker>
           );
@@ -202,8 +228,8 @@ export default function LeafletMap({
 
 function cleanMenuText(text?: string): string {
   return (text ?? "")
-    .replace(/#+/g, "\n") // turn #### into line breaks
-    .replace(/\s{2,}/g, " ") // collapse extra spaces
+    .replace(/#+/g, "\n")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
@@ -211,36 +237,29 @@ function parseMenuItems(text?: string, max = 6): string[] {
   const raw = cleanMenuText(text);
   if (!raw) return [];
 
-  const tokens = raw
-    .split(/\r?\n|[•–—\-,:;|]+/)
+  const lines = raw
+    .split(/\r?\n|[•;|]+/)
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const unique = Array.from(new Set(tokens));
-  const truncate = (s: string) => (s.length > 90 ? s.slice(0, 87) + "..." : s);
-  return unique.slice(0, max).map(truncate);
+  const cleaned = lines
+    .map((line) =>
+      line
+        .replace(
+          /^(ma|ti|ke|to|pe|la|su|maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai)\b\.?\s*/i,
+          "",
+        )
+        .replace(/^\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?\.?\s*/, "")
+        .replace(/^[-:|]\s*/, "")
+        .trim(),
+    )
+    .filter((line) => {
+      if (line.length < 4) return false;
+      if (/^\d+$/.test(line)) return false;
+      if (!/[a-zA-ZåäöÅÄÖ]/.test(line)) return false;
+      return true;
+    });
+
+  return Array.from(new Set(cleaned)).slice(0, max);
 }
 
-function renderMenuList(text: string | undefined, max: number, rid: string) {
-  const items = parseMenuItems(text, max);
-  if (!items.length) {
-    return (
-      <div style={{ margin: "8px 2px", color: "#6b7280" }}>
-        Ei lounaslistaa saatavilla
-      </div>
-    );
-  }
-  return (
-    <ul style={{ margin: "8px 2px", paddingLeft: 0, listStyle: "none" }}>
-      {items.map((item) => (
-        <li
-          key={`${rid}:${item.toLowerCase()}`}
-          style={{ display: "flex", gap: 6, marginTop: 4 }}
-        >
-          <span aria-hidden>•</span>
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
