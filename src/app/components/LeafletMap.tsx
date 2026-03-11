@@ -161,7 +161,7 @@ export default function LeafletMap({
 
                   {typeof r.averageRating === "number" &&
                   (r.reviewCount ?? 0) > 0 ? (
-                    <p className="text-base text-slate-700,">
+                    <p className="text-base text-slate-700">
                       Arvosana {r.averageRating.toFixed(1)}/5 (
                       {r.reviewCount ?? 0} arvostelua)
                     </p>

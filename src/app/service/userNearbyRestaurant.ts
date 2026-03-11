@@ -63,8 +63,10 @@ export function useNearbyRestaurants(radiusKm = 2) {
     try {
       const fetchedRestaurants = await getRestaurants();
       const ids = fetchedRestaurants.map((r: { id: string }) => r.id);
-      const menusByRestaurant = await getLatestMenusByRestaurant(ids);
-      const reviewStats = await getReviewStatsByRestaurant(ids);
+      const [menusByRestaurant, reviewStats] = await Promise.all([
+        getLatestMenusByRestaurant(ids),
+        getReviewStatsByRestaurant(ids),
+      ]);
 
       const merged = fetchedRestaurants.map((r: Restaurant) => ({
         ...r,
