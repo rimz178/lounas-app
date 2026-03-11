@@ -155,13 +155,13 @@ export default function LeafletMap({
             >
               <Popup>
                 <div className="min-w-[220px] max-w-[280px] space-y-2">
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-lg font-semibold text-slate-900">
                     {r.name}
                   </h3>
 
                   {typeof r.averageRating === "number" &&
                   (r.reviewCount ?? 0) > 0 ? (
-                    <p className="text-xs text-slate-700">
+                    <p className="text-base text-slate-700,">
                       Arvosana {r.averageRating.toFixed(1)}/5 (
                       {r.reviewCount ?? 0} arvostelua)
                     </p>
