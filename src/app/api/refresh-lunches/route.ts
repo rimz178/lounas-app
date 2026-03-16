@@ -4,26 +4,30 @@ import { createClient } from "@supabase/supabase-js";
 /**
  *  Trigger a GitHub Actions workflow to refresh lunches. Only accessible by admin users.
  * @param req   - The incoming request object
- * @returns    - A JSON response indicating success or failure of the operation    
+ * @returns    - A JSON response indicating success or failure of the operation
  */
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfiguration" },
+      { status: 500 },
+    );
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!authHeader)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const token = authHeader.replace("Bearer ", "");
-  const { data: { user } } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
 
-  
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
@@ -35,15 +39,18 @@ export async function POST(req: NextRequest) {
   }
 
   // GitHub fetch
-  const res = await fetch("https://api.github.com/repos/rimz178/lounas-app/actions/workflows/refresh-lunches.yml/dispatches", {
-    method: "POST",
-    headers: {
-      "Accept": "application/vnd.github+json",
-      "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
-      "Content-Type": "application/json",
+  const res = await fetch(
+    "https://api.github.com/repos/rimz178/lounas-app/actions/workflows/refresh-lunches.yml/dispatches",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ref: "main" }),
     },
-    body: JSON.stringify({ ref: "main" }),
-  });
+  );
 
   if (res.ok) {
     return NextResponse.json({ success: true });

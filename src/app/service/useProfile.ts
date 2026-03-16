@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../components/AuthContext";
-import { supabase } from "./supabaseClient"; 
+import { supabase } from "./supabaseClient";
 
 type Profile = {
   id: string;

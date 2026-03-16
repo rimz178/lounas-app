@@ -262,4 +262,3 @@ function parseMenuItems(text?: string, max = 6): string[] {
 
   return Array.from(new Set(cleaned)).slice(0, max);
 }
-

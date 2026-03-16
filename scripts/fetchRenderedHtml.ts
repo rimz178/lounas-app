@@ -15,18 +15,28 @@ export async function fetchRenderedHtml(
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
-    await page.waitForSelector("div.lunch-block, .menu-item, .lounas-lista", { timeout: 15_000 }).catch(() => {
-        console.log("Did not find a specific menu element, continuing with what we have.");
-    });
-    
-    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {
-      console.log(`networkidle timeout for ${url}, continuing...`);
-    });
+    await page
+      .waitForSelector("div.lunch-block, .menu-item, .lounas-lista", {
+        timeout: 15_000,
+      })
+      .catch(() => {
+        console.log(
+          "Did not find a specific menu element, continuing with what we have.",
+        );
+      });
+
+    await page
+      .waitForLoadState("networkidle", { timeout: 10_000 })
+      .catch(() => {
+        console.log(`networkidle timeout for ${url}, continuing...`);
+      });
 
     const chunks: string[] = [];
     for (const frame of page.frames()) {
       const text = await frame
-        .evaluate(() => document.body?.innerText || document.body?.textContent || "")
+        .evaluate(
+          () => document.body?.innerText || document.body?.textContent || "",
+        )
         .catch(() => "");
       if (text.trim()) chunks.push(text.trim());
     }
