@@ -27,6 +27,12 @@ export default function Navigation() {
             Hallinta
           </Link>
         )}
+        <Link
+          href="/menu"
+          className="text-white text-base sm:text-lg font-semibold hover:text-red-500 transition"
+        >
+          Ruokalistat
+        </Link>
       </div>
       <div className="ml-auto">
         <AuthButton />

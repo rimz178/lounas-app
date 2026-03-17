@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { refreshAuth } = useAuth(); 
+  const { refreshAuth } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,11 +27,14 @@ export default function LoginPage() {
         throw new Error(error.message);
       }
 
-    
       await refreshAuth();
       router.push("/");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Jotain meni pieleen. Yritä uudelleen.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Jotain meni pieleen. Yritä uudelleen.",
+      );
     } finally {
       setLoading(false);
     }

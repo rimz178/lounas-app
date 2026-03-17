@@ -44,14 +44,14 @@ Language:
 `;
 
 export async function extractMenu(text: string) {
-  const MAX_CHARS = 8000; 
+  const MAX_CHARS = 8000;
   const truncatedText = text.slice(0, MAX_CHARS);
 
   const today = new Date().toLocaleDateString("fi-FI", {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
+    weekday: "long",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
   });
 
   const completion = await openai.chat.completions.create({
@@ -59,11 +59,15 @@ export async function extractMenu(text: string) {
     temperature: 0.2,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: `Today is ${today}. Extract the menu based on the following content:\n\n${truncatedText}` },
+      {
+        role: "user",
+        content: `Today is ${today}. Extract the menu based on the following content:\n\n${truncatedText}`,
+      },
     ],
   });
 
-  const response = completion.choices?.[0]?.message?.content ?? "No lunch menu found.";
+  const response =
+    completion.choices?.[0]?.message?.content ?? "No lunch menu found.";
   console.log("OpenAI response:", response);
   return response;
 }
