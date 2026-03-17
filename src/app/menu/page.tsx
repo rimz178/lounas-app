@@ -19,6 +19,8 @@ export default async function MenuPage() {
     name: restaurant.name,
     url: restaurant.url ?? null,
     menuText: menusByRestaurant[restaurant.id] ?? null,
+    lat: restaurant.lat ?? null,
+    lng: restaurant.lng ?? null,
   }));
 
   return (

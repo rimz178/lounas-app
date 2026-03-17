@@ -2,6 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import DirectionsButton from "./DirectionsButton";
 import RestaurantSearchBar from "./RestaurantSearchBar";
 
 type RestaurantMenu = {
@@ -9,6 +10,8 @@ type RestaurantMenu = {
   name: string;
   url: string | null;
   menuText: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 type MenuSection = {
@@ -72,6 +75,8 @@ export default function MenuRestaurantCards({
   restaurants: RestaurantMenu[];
 }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
@@ -91,16 +96,26 @@ export default function MenuRestaurantCards({
     );
   }, [restaurants, query]);
 
+  const totalPages = Math.ceil(filteredRestaurants.length / PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(0, totalPages - 1));
+  const paginatedRestaurants = filteredRestaurants.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE,
+  );
+
   return (
     <>
       <RestaurantSearchBar
         value={query}
-        onChange={setQuery}
+        onChange={(v) => {
+          setQuery(v);
+          setPage(0);
+        }}
         resultText={`${filteredRestaurants.length} / ${restaurants.length} ravintolaa`}
       />
 
       <div className="mt-6 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {filteredRestaurants.map((restaurant) => {
+        {paginatedRestaurants.map((restaurant) => {
           const rawMenu = restaurant.menuText?.trim();
           const hasMenu = !!rawMenu && rawMenu !== "No lunch menu found.";
           const sections = hasMenu ? parseMenuSections(rawMenu) : [];
@@ -117,16 +132,25 @@ export default function MenuRestaurantCards({
                 <h2 className="text-xl font-semibold text-gray-900">
                   {restaurant.name}
                 </h2>
-                {restaurant.url ? (
-                  <a
-                    href={restaurant.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
-                  >
-                    Sivu
-                  </a>
-                ) : null}
+                <div className="flex shrink-0 gap-2">
+                  {restaurant.url ? (
+                    <a
+                      href={restaurant.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100"
+                    >
+                      Sivu
+                    </a>
+                  ) : null}
+                  {restaurant.lat && restaurant.lng ? (
+                    <DirectionsButton
+                      lat={restaurant.lat}
+                      lng={restaurant.lng}
+                      name={restaurant.name}
+                    />
+                  ) : null}
+                </div>
               </div>
 
               {!hasMenu ? (
@@ -193,6 +217,30 @@ export default function MenuRestaurantCards({
           );
         })}
       </div>
+
+      {totalPages > 1 ? (
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+          >
+            ← Edellinen
+          </button>
+          <span className="text-sm text-gray-600">
+            {currentPage + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage === totalPages - 1}
+            className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+          >
+            Seuraava →
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
