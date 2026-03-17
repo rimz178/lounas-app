@@ -77,7 +77,7 @@ export default function MenuRestaurantCards({
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
-
+  const NO_MENU_SENTINEL = "No lunch menu found.";
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
   const toggleExpanded = (id: string) => {
@@ -117,7 +117,7 @@ export default function MenuRestaurantCards({
       <div className="mt-6 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {paginatedRestaurants.map((restaurant) => {
           const rawMenu = restaurant.menuText?.trim();
-          const hasMenu = !!rawMenu && rawMenu !== "No lunch menu found.";
+          const hasMenu = !!rawMenu && rawMenu !== NO_MENU_SENTINEL;
           const sections = hasMenu ? parseMenuSections(rawMenu) : [];
 
           const isExpanded = !!expandedIds[restaurant.id];
@@ -143,7 +143,7 @@ export default function MenuRestaurantCards({
                       Sivu
                     </a>
                   ) : null}
-                  {restaurant.lat && restaurant.lng ? (
+                  {restaurant.lat != null && restaurant.lng != null ? (
                     <DirectionsButton
                       lat={restaurant.lat}
                       lng={restaurant.lng}
@@ -180,9 +180,9 @@ export default function MenuRestaurantCards({
                               </h3>
                             ) : null}
                             <ul className="ml-4 list-disc space-y-1 text-sm text-gray-800">
-                              {section.items.map((item) => (
+                              {section.items.map((item, itemIndex) => (
                                 <li
-                                  key={`${restaurant.id}-${section.title ?? "menu"}-${item}`}
+                                  key={`${restaurant.id}-${section.title ?? "menu"}-${itemIndex}`}
                                 >
                                   {item}
                                 </li>
