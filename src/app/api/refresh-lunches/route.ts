@@ -9,9 +9,9 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-   const githubToken = process.env.GITHUB_TOKEN;
+  const githubToken = process.env.GITHUB_TOKEN;
 
-   if (!supabaseUrl || !serviceRoleKey || !githubToken) {
+  if (!supabaseUrl || !serviceRoleKey || !githubToken) {
     return NextResponse.json(
       { error: "Server misconfiguration" },
       { status: 500 },
