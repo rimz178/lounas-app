@@ -116,9 +116,12 @@ export async function getUserReview(restaurantId: string) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-      if (error) {
-        console.error("Käyttäjän arvostelun haku epäonnistui...");
-    return null;
+    if (error) {
+      console.error(
+        `Käyttäjän arvostelun haku epäonnistui (restaurantId=${restaurantId}, userId=${user.id}):`,
+        error,
+      );
+      return null;
     }
 
     return data || null;
