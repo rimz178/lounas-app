@@ -7,6 +7,36 @@ type GeocodeApiResult = {
   lon: string;
 };
 
+type ExistingRestaurant = {
+  id: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+  url: string | null;
+};
+
+function normalizeText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("fi-FI");
+}
+
+function getDistanceMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) {
+  const earthRadiusMeters = 6_371_000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+
+  return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function normalizeUrl(rawUrl: unknown): string | null {
   if (typeof rawUrl !== "string") return null;
   const trimmed = rawUrl.trim();
@@ -149,6 +179,50 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Osoitetta ei löytynyt kartalta" },
       { status: 404 },
+    );
+  }
+
+  const { data: existingRestaurants, error: existingRestaurantsError } =
+    await supabase.from("ravintolat").select("id, name, lat, lng, url");
+
+  if (existingRestaurantsError) {
+    return NextResponse.json(
+      { error: "Ravintoloiden tarkistus epäonnistui" },
+      { status: 500 },
+    );
+  }
+
+  const normalizedName = normalizeText(name);
+  const duplicateRestaurant = ((existingRestaurants ?? []) as ExistingRestaurant[]).find((restaurant) => {
+    const existingUrl = normalizeUrl(restaurant.url);
+    if (normalizedUrl && existingUrl === normalizedUrl) {
+      return true;
+    }
+
+    if (normalizeText(restaurant.name) !== normalizedName) {
+      return false;
+    }
+
+    if (restaurant.lat == null || restaurant.lng == null) {
+      return false;
+    }
+
+    return (
+      getDistanceMeters(
+        restaurant.lat,
+        restaurant.lng,
+        coordinates.lat,
+        coordinates.lng,
+      ) <= 150
+    );
+  });
+
+  if (duplicateRestaurant) {
+    return NextResponse.json(
+      {
+        error: `Ravintola on jo lisätty: ${duplicateRestaurant.name}`,
+      },
+      { status: 409 },
     );
   }
 
