@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -13,6 +13,10 @@ type ExistingRestaurant = {
   lat: number | null;
   lng: number | null;
   url: string | null;
+};
+
+type AuthorizedSupabaseContext = {
+  supabase: SupabaseClient;
 };
 
 function normalizeText(value: string) {
@@ -92,20 +96,19 @@ async function geocodeAddress(address: string) {
   return { lat, lng };
 }
 
-export async function POST(req: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json(
-      { error: "Server misconfiguration" },
-      { status: 500 },
-    );
-  }
-
+async function authorizeAdmin(
+  req: NextRequest,
+  supabaseUrl: string,
+  serviceRoleKey: string,
+): Promise<
+  | { response: NextResponse; context?: never }
+  | { response?: never; context: AuthorizedSupabaseContext }
+> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return {
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
   }
 
   const token = authHeader.replace("Bearer ", "").trim();
@@ -117,7 +120,9 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser(token);
 
   if (userError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return {
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -127,8 +132,31 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (profileError || profile?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return {
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    };
   }
+
+  return { context: { supabase } };
+}
+
+export async function POST(req: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Server misconfiguration" },
+      { status: 500 },
+    );
+  }
+
+  const auth = await authorizeAdmin(req, supabaseUrl, serviceRoleKey);
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const { supabase } = auth.context;
 
   let payload: {
     name?: unknown;
@@ -193,7 +221,9 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedName = normalizeText(name);
-  const duplicateRestaurant = ((existingRestaurants ?? []) as ExistingRestaurant[]).find((restaurant) => {
+  const duplicateRestaurant = (
+    (existingRestaurants ?? []) as ExistingRestaurant[]
+  ).find((restaurant) => {
     const existingUrl = normalizeUrl(restaurant.url);
     if (normalizedUrl && existingUrl === normalizedUrl) {
       return true;
@@ -246,4 +276,103 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ restaurant: createdRestaurant }, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Server misconfiguration" },
+      { status: 500 },
+    );
+  }
+
+  const auth = await authorizeAdmin(req, supabaseUrl, serviceRoleKey);
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const { supabase } = auth.context;
+
+  let payload: { restaurantId?: unknown };
+
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const restaurantId =
+    typeof payload.restaurantId === "string" ? payload.restaurantId.trim() : "";
+
+  if (!restaurantId) {
+    return NextResponse.json(
+      { error: "Ravintolaa ei valittu" },
+      { status: 400 },
+    );
+  }
+
+  const { data: existingRestaurant, error: existingRestaurantError } =
+    await supabase
+      .from("ravintolat")
+      .select("id, name")
+      .eq("id", restaurantId)
+      .maybeSingle();
+
+  if (existingRestaurantError) {
+    return NextResponse.json(
+      { error: "Ravintolan haku epäonnistui" },
+      { status: 500 },
+    );
+  }
+
+  if (!existingRestaurant) {
+    return NextResponse.json(
+      { error: "Ravintolaa ei löytynyt" },
+      { status: 404 },
+    );
+  }
+
+  const { error: deleteReviewsError } = await supabase
+    .from("reviews")
+    .delete()
+    .eq("restaurant_id", restaurantId);
+
+  if (deleteReviewsError) {
+    return NextResponse.json(
+      { error: "Ravintolan arvostelujen poisto epäonnistui" },
+      { status: 500 },
+    );
+  }
+
+  const { error: deleteMenusError } = await supabase
+    .from("menus")
+    .delete()
+    .eq("restaurant_id", restaurantId);
+
+  if (deleteMenusError) {
+    return NextResponse.json(
+      { error: "Ravintolan menujen poisto epäonnistui" },
+      { status: 500 },
+    );
+  }
+
+  const { error: deleteRestaurantError } = await supabase
+    .from("ravintolat")
+    .delete()
+    .eq("id", restaurantId);
+
+  if (deleteRestaurantError) {
+    return NextResponse.json(
+      { error: "Ravintolan poisto epäonnistui" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    deleted: true,
+    restaurant: existingRestaurant,
+  });
 }

@@ -3,6 +3,9 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AddRestaurantForm from "../components/admin/AddRestaurantForm";
+import DeleteRestaurantPanel, {
+  type DeleteStatus,
+} from "../components/admin/DeleteRestaurantPanel";
 import MenuEditor, {
   type AdminMenuRow,
   type AdminRestaurantOption,
@@ -70,8 +73,11 @@ export default function Hallinta() {
   const [restaurants, setRestaurants] = useState<AdminRestaurantOption[]>([]);
   const [menus, setMenus] = useState<AdminMenuRow[]>([]);
   const [selected, setSelected] = useState<string>("");
+  const [selectedToDelete, setSelectedToDelete] = useState<string>("");
   const [menu, setMenu] = useState<string>("");
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>("idle");
+  const [deleteMessage, setDeleteMessage] = useState("");
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
   const [refreshRun, setRefreshRun] = useState<RefreshRun | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string>("");
@@ -163,8 +169,11 @@ export default function Hallinta() {
       [...prev, restaurant].sort((a, b) => a.name.localeCompare(b.name, "fi")),
     );
     setSelected(restaurant.id);
+    setSelectedToDelete(restaurant.id);
     setMenu("");
     setStatus("idle");
+    setDeleteStatus("idle");
+    setDeleteMessage("");
   }
 
   async function handleSave() {
@@ -209,6 +218,66 @@ export default function Hallinta() {
       });
     } else {
       setStatus("error");
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedToDelete) return;
+
+    setDeleteStatus("loading");
+    setDeleteMessage("");
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+
+      if (!accessToken) {
+        setDeleteStatus("error");
+        setDeleteMessage("Kirjautuminen vanheni. Kirjaudu uudelleen.");
+        return;
+      }
+
+      const res = await fetch("/api/admin/restaurants", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ restaurantId: selectedToDelete }),
+      });
+
+      const payload = (await res.json()) as {
+        deleted?: boolean;
+        error?: string;
+        restaurant?: { id: string; name: string };
+      };
+
+      if (!res.ok || !payload.deleted || !payload.restaurant) {
+        setDeleteStatus("error");
+        setDeleteMessage(payload.error ?? "Ravintolan poisto epäonnistui.");
+        return;
+      }
+
+      setRestaurants((prev) =>
+        prev.filter((restaurant) => restaurant.id !== selectedToDelete),
+      );
+      setMenus((prev) =>
+        prev.filter((menuRow) => menuRow.restaurant_id !== selectedToDelete),
+      );
+
+      if (selected === selectedToDelete) {
+        setSelected("");
+        setMenu("");
+        setStatus("idle");
+      }
+
+      setSelectedToDelete("");
+      setMenu("");
+      setDeleteStatus("success");
+      setDeleteMessage(`Ravintola poistettu: ${payload.restaurant.name}`);
+    } catch {
+      setDeleteStatus("error");
+      setDeleteMessage("Ravintolan poisto epäonnistui.");
     }
   }
 
@@ -337,6 +406,15 @@ export default function Hallinta() {
       </section>
 
       <AddRestaurantForm onRestaurantAdded={handleRestaurantAdded} />
+
+      <DeleteRestaurantPanel
+        restaurants={restaurants}
+        selected={selectedToDelete}
+        deleteStatus={deleteStatus}
+        deleteMessage={deleteMessage}
+        onSelect={setSelectedToDelete}
+        onDelete={handleDelete}
+      />
 
       <MenuEditor
         restaurants={restaurants}
