@@ -138,7 +138,7 @@ export default function AddRestaurantForm({ onRestaurantAdded }: Props) {
             placeholder="Esim. https://ravintola.fi"
           />
           <p className="mt-1 text-xs text-gray-600">
-            Voit syottää myos ilman https://, se lisätään automaattisesti.
+            Voit syottää myös ilman https://, se lisätään automaattisesti.
           </p>
         </div>
 
