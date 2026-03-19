@@ -161,8 +161,8 @@ export default function Hallinta() {
           className="rounded-md bg-blue-600 px-4 py-2 text-white disabled:opacity-60"
         >
           {updateStatus === "loading"
-            ? "Paivitetaan..."
-            : "Paivita ruokalistat OpenAI:lla"}
+            ? "Päivitetään..."
+            : "Päivitä ruokalistat OpenAI:lla"}
         </button>
         {updateStatus === "success" ? (
           <p className="mt-2 text-sm text-green-700">
