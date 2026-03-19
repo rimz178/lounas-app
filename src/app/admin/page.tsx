@@ -3,7 +3,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { supabase } from "../service/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useProfile } from "../service/useProfile"; // tai mistä hook tulee
+import { useProfile } from "../service/useProfile"; 
 
 type Restaurant = {
   id: string;
