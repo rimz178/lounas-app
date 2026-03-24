@@ -50,7 +50,7 @@ export default function DeleteRestaurantPanel({
       </select>
 
       <p className="mt-3 text-sm text-gray-600">
-        Poisto poistaa samalla ravintolan menut ja arvostelut.
+        Ravintolan poistaminen poistaa sen pysyvästi järjestelmästä.
       </p>
 
       <button

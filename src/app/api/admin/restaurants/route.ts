@@ -68,15 +68,31 @@ async function geocodeAddress(address: string) {
     limit: "1",
   });
 
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-    {
-      headers: {
-        "User-Agent": "lounas-app-admin/1.0 (admin geocoding)",
+   const controller = new AbortController();
+  const timeoutMs = 5000;
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+      {
+        headers: {
+          "User-Agent": "lounas-app-admin/1.0 (admin geocoding)",
+        },
+        cache: "no-store",
+        signal: controller.signal,
       },
-      cache: "no-store",
-    },
-  );
+    );
+  } catch (error) {
+    if ((error as Error).name === "AbortError") {
+      throw new Error("Geocoding request timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error("Geocoding service unavailable");
@@ -335,6 +351,10 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
+  // Related menus and reviews are removed automatically by the database.
+  // The schema enforces ON DELETE CASCADE:
+  //   menus.restaurant_id → ravintolat.id ON DELETE CASCADE
+  //   reviews.restaurant_id → ravintolat.id ON DELETE CASCADE
   const { error: deleteRestaurantError } = await supabase
     .from("ravintolat")
     .delete()

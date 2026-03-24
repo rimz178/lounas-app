@@ -147,9 +147,17 @@ export async function POST(req: NextRequest) {
     .eq("id", restaurantId);
 
   if (updateModeError) {
+    console.error(
+      "Failed to set restaurant menu_mode to 'manual':",
+      updateModeError,
+    );
     return NextResponse.json(
-      { error: "Ravintolan päivitystilan asetus epäonnistui" },
-      { status: 500 },
+      {
+        menu: savedMenu as SavedMenuRow,
+        warning:
+          "Ravintolan päivitystilan asetus epäonnistui, mutta ruokalista tallennettiin onnistuneesti",
+      },
+      { status: 200 },
     );
   }
 
