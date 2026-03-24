@@ -67,7 +67,7 @@ export default function AddRestaurantForm({ onRestaurantAdded }: Props) {
 
       if (!res.ok || !payload.restaurant) {
         setStatus("error");
-        setMessage(payload.error ?? "Ravintolan lisays epäonnistui.");
+        setMessage(payload.error ?? "Ravintolan lisäys epäonnistui.");
         return;
       }
 
@@ -79,7 +79,7 @@ export default function AddRestaurantForm({ onRestaurantAdded }: Props) {
       setMessage("Ravintola lisätty onnistuneesti.");
     } catch {
       setStatus("error");
-      setMessage("Ravintolan lisäys epaonnistui.");
+      setMessage("Ravintolan lisäys epäonnistui.");
     }
   }
 
@@ -138,7 +138,7 @@ export default function AddRestaurantForm({ onRestaurantAdded }: Props) {
             placeholder="Esim. https://ravintola.fi"
           />
           <p className="mt-1 text-xs text-gray-600">
-            Voit syottää myös ilman https://, se lisätään automaattisesti.
+            Voit syöttää myös ilman https://, se lisätään automaattisesti.
           </p>
         </div>
 

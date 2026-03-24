@@ -1,5 +1,4 @@
 "use client";
-import type { PostgrestError } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AddRestaurantForm from "../components/admin/AddRestaurantForm";
@@ -81,6 +80,7 @@ export default function Hallinta() {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
   const [refreshRun, setRefreshRun] = useState<RefreshRun | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string>("");
+  const [loadError, setLoadError] = useState<string>("");
 
   useEffect(() => {
     if (profile && profile.role !== "admin") {
@@ -92,12 +92,39 @@ export default function Hallinta() {
     let cancelled = false;
 
     async function loadData() {
-      const [{ data: restaurantData }, { data: menuData }] = await Promise.all([
+      const [
+        { data: restaurantData, error: restaurantError },
+        { data: menuData, error: menuError },
+      ] = await Promise.all([
         supabase.from("ravintolat").select("id, name").order("name"),
         supabase.from("menus").select("id, restaurant_id, menu_text"),
       ]);
 
       if (cancelled) return;
+
+      if (restaurantError || menuError) {
+        console.error("Admin data load failed", {
+          restaurantError,
+          menuError,
+        });
+
+        const messages: string[] = [];
+        if (restaurantError) {
+          messages.push(
+            `Ravintoloiden lataus epäonnistui: ${restaurantError.message}`,
+          );
+        }
+        if (menuError) {
+          messages.push(`Menulistan lataus epäonnistui: ${menuError.message}`);
+        }
+
+        setLoadError(
+          messages.join(" ") ||
+            "Hallintadatan lataus epäonnistui. Yritä päivittää sivu.",
+        );
+      } else {
+        setLoadError("");
+      }
 
       setRestaurants((restaurantData ?? []) as AdminRestaurantOption[]);
       setMenus((menuData ?? []) as AdminMenuRow[]);
@@ -182,41 +209,50 @@ export default function Hallinta() {
     setStatus("loading");
     const trimmedMenu = menu.trim();
 
-    const { error: menuError } = await supabase
-      .from("menus")
-      .upsert(
-        { restaurant_id: selected, menu_text: trimmedMenu },
-        { onConflict: "restaurant_id" },
-      );
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
 
-    let modeError: PostgrestError | null = null;
-    if (!menuError) {
-      const { error: updateModeError } = await supabase
-        .from("ravintolat")
-        .update({ menu_mode: "manual" })
-        .eq("id", selected);
-      modeError = updateModeError;
-    }
+      if (!accessToken) {
+        setStatus("error");
+        return;
+      }
 
-    if (!menuError && !modeError) {
+      const res = await fetch("/api/admin/menus", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId: selected,
+          menuText: trimmedMenu,
+        }),
+      });
+
+      const payload = (await res.json()) as {
+        menu?: AdminMenuRow;
+        error?: string;
+      };
+
+      if (!res.ok || !payload.menu) {
+        setStatus("error");
+        return;
+      }
+
+      const savedMenu = payload.menu;
+
       setStatus("success");
       setMenus((prev) => {
         const idx = prev.findIndex((m) => m.restaurant_id === selected);
         if (idx > -1) {
           const copy = [...prev];
-          copy[idx] = { ...copy[idx], menu_text: trimmedMenu };
+          copy[idx] = savedMenu;
           return copy;
         }
-        return [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            restaurant_id: selected,
-            menu_text: trimmedMenu,
-          },
-        ];
+        return [...prev, savedMenu];
       });
-    } else {
+    } catch {
       setStatus("error");
     }
   }
@@ -332,6 +368,12 @@ export default function Hallinta() {
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <h1 className="text-2xl font-bold">Hallinta</h1>
+
+      {loadError ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError}
+        </p>
+      ) : null}
 
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold">Automaattinen päivitys</h2>

@@ -55,12 +55,15 @@ export default function MenuEditor({
 
       {selected ? (
         <div className="mt-4">
+          <label htmlFor="menu-textarea" className="block text-sm font-medium">
+            Muokkaa ruokalistaa
+          </label>
           <textarea
+            id="menu-textarea"
             value={menu}
             onChange={(e) => onMenuChange(e.target.value)}
             rows={8}
-            className="block w-full max-w-2xl rounded-md border border-gray-300 px-3 py-2"
-            placeholder="Kirjoita ravintolan menu tähän..."
+            className="mt-2 block w-full max-w-2xl rounded-md border border-gray-300 px-3 py-2"
           />
 
           <button
@@ -74,11 +77,11 @@ export default function MenuEditor({
 
           {status === "success" ? (
             <p className="mt-2 text-sm text-green-700">
-              Menu paivitetty onnistuneesti.
+              Menu päivitetty onnistuneesti.
             </p>
           ) : null}
           {status === "error" ? (
-            <p className="mt-2 text-sm text-red-700">Päivitys epaonnistui.</p>
+            <p className="mt-2 text-sm text-red-700">Päivitys epäonnistui.</p>
           ) : null}
         </div>
       ) : null}

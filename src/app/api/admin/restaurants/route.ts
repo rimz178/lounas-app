@@ -335,30 +335,6 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  const { error: deleteReviewsError } = await supabase
-    .from("reviews")
-    .delete()
-    .eq("restaurant_id", restaurantId);
-
-  if (deleteReviewsError) {
-    return NextResponse.json(
-      { error: "Ravintolan arvostelujen poisto epäonnistui" },
-      { status: 500 },
-    );
-  }
-
-  const { error: deleteMenusError } = await supabase
-    .from("menus")
-    .delete()
-    .eq("restaurant_id", restaurantId);
-
-  if (deleteMenusError) {
-    return NextResponse.json(
-      { error: "Ravintolan menujen poisto epäonnistui" },
-      { status: 500 },
-    );
-  }
-
   const { error: deleteRestaurantError } = await supabase
     .from("ravintolat")
     .delete()
