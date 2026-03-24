@@ -1,34 +1,86 @@
 "use client";
-import type { PostgrestError } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
-import { supabase } from "../service/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useProfile } from "../service/useProfile"; // tai mistä hook tulee
+import { useCallback, useEffect, useState } from "react";
+import AddRestaurantForm from "../components/admin/AddRestaurantForm";
+import DeleteRestaurantPanel, {
+  type DeleteStatus,
+} from "../components/admin/DeleteRestaurantPanel";
+import MenuEditor, {
+  type AdminMenuRow,
+  type AdminRestaurantOption,
+  type SaveStatus,
+} from "../components/admin/MenuEditor";
+import { supabase } from "../service/supabaseClient";
+import { useProfile } from "../service/useProfile";
 
-type Restaurant = {
-  id: string;
-  name: string;
+type UpdateStatus = "idle" | "loading" | "success" | "error";
+type RefreshRun = {
+  id: number;
+  url: string;
+  status: string;
+  conclusion: string | null;
+  runNumber: number;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+  totalSteps: number;
+  completedSteps: number;
+  progressPercent: number | null;
+  currentStep: string | null;
 };
-type Menu = {
-  id: string;
-  restaurant_id: string;
-  menu_text: string;
+
+const refreshStatusLabels: Record<string, string> = {
+  queued: "Jonossa",
+  in_progress: "Käynnissä",
+  completed: "Valmis",
+  pending: "Odottaa",
+  requested: "Pyydetty",
+  waiting: "Odottaa",
 };
+
+const refreshConclusionLabels: Record<string, string> = {
+  success: "Onnistui",
+  failure: "Epäonnistui",
+  cancelled: "Peruutettu",
+  skipped: "Ohitettu",
+  neutral: "Valmis",
+  timed_out: "Aikakatkaistu",
+  action_required: "Vaatii toimia",
+};
+
+function formatRefreshStatus(run: RefreshRun | null) {
+  if (!run) return "Ei aiempaa ajoa";
+
+  if (run.status === "completed") {
+    return refreshConclusionLabels[run.conclusion ?? ""] ?? "Valmis";
+  }
+
+  return refreshStatusLabels[run.status] ?? run.status;
+}
+
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat("fi-FI", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export default function Hallinta() {
   const router = useRouter();
   const profile = useProfile();
 
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [menus, setMenus] = useState<Menu[]>([]);
+  const [restaurants, setRestaurants] = useState<AdminRestaurantOption[]>([]);
+  const [menus, setMenus] = useState<AdminMenuRow[]>([]);
   const [selected, setSelected] = useState<string>("");
+  const [selectedToDelete, setSelectedToDelete] = useState<string>("");
   const [menu, setMenu] = useState<string>("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [updateStatus, setUpdateStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState<SaveStatus>("idle");
+  const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>("idle");
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [refreshRun, setRefreshRun] = useState<RefreshRun | null>(null);
+  const [refreshMessage, setRefreshMessage] = useState<string>("");
+  const [loadError, setLoadError] = useState<string>("");
 
   useEffect(() => {
     if (profile && profile.role !== "admin") {
@@ -37,14 +89,52 @@ export default function Hallinta() {
   }, [profile, router]);
 
   useEffect(() => {
-    supabase
-      .from("ravintolat")
-      .select("id, name")
-      .then(({ data }) => setRestaurants(data || []));
-    supabase
-      .from("menus")
-      .select("id, restaurant_id, menu_text")
-      .then(({ data }) => setMenus(data || []));
+    let cancelled = false;
+
+    async function loadData() {
+      const [
+        { data: restaurantData, error: restaurantError },
+        { data: menuData, error: menuError },
+      ] = await Promise.all([
+        supabase.from("ravintolat").select("id, name").order("name"),
+        supabase.from("menus").select("id, restaurant_id, menu_text"),
+      ]);
+
+      if (cancelled) return;
+
+      if (restaurantError || menuError) {
+        console.error("Admin data load failed", {
+          restaurantError,
+          menuError,
+        });
+
+        const messages: string[] = [];
+        if (restaurantError) {
+          messages.push(
+            `Ravintoloiden lataus epäonnistui: ${restaurantError.message}`,
+          );
+        }
+        if (menuError) {
+          messages.push(`Menulistan lataus epäonnistui: ${menuError.message}`);
+        }
+
+        setLoadError(
+          messages.join(" ") ||
+            "Hallintadatan lataus epäonnistui. Yritä päivittää sivu.",
+        );
+      } else {
+        setLoadError("");
+      }
+
+      setRestaurants((restaurantData ?? []) as AdminRestaurantOption[]);
+      setMenus((menuData ?? []) as AdminMenuRow[]);
+    }
+
+    void loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -55,6 +145,44 @@ export default function Hallinta() {
     }
   }, [selected, menus]);
 
+  const fetchRefreshStatus = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+
+    if (!accessToken) return;
+
+    const res = await fetch("/api/refresh-lunches", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      return;
+    }
+
+    const payload = (await res.json()) as { run: RefreshRun | null };
+    setRefreshRun(payload.run ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (profile?.role !== "admin") return;
+    void fetchRefreshStatus();
+  }, [fetchRefreshStatus, profile]);
+
+  useEffect(() => {
+    if (profile?.role !== "admin" || !refreshRun?.isActive) return;
+
+    const interval = window.setInterval(() => {
+      void fetchRefreshStatus();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [fetchRefreshStatus, profile, refreshRun?.isActive]);
+
   if (!profile) {
     return <p>Ei oikeuksia palaa etusivulle</p>;
   }
@@ -63,135 +191,282 @@ export default function Hallinta() {
     return null;
   }
 
+  function handleRestaurantAdded(restaurant: AdminRestaurantOption) {
+    setRestaurants((prev) =>
+      [...prev, restaurant].sort((a, b) => a.name.localeCompare(b.name, "fi")),
+    );
+    setSelected(restaurant.id);
+    setSelectedToDelete(restaurant.id);
+    setMenu("");
+    setStatus("idle");
+    setDeleteStatus("idle");
+    setDeleteMessage("");
+  }
+
   async function handleSave() {
+    if (!selected || !menu.trim()) return;
+
     setStatus("loading");
-    const existing = menus.find((m) => m.restaurant_id === selected);
+    const trimmedMenu = menu.trim();
 
-    let error: PostgrestError | null = null;
-    if (existing) {
-      const { error: updateError } = await supabase
-        .from("menus")
-        .upsert(
-          { restaurant_id: selected, menu_text: menu },
-          { onConflict: "restaurant_id" },
-        );
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase.from("menus").insert({
-        restaurant_id: selected,
-        menu_text: menu,
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+
+      if (!accessToken) {
+        setStatus("error");
+        return;
+      }
+
+      const res = await fetch("/api/admin/menus", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId: selected,
+          menuText: trimmedMenu,
+        }),
       });
-      error = insertError;
-    }
 
-    await supabase
-      .from("ravintolat")
-      .update({ menu_mode: "manual" })
-      .eq("id", selected);
+      const payload = (await res.json()) as {
+        menu?: AdminMenuRow;
+        error?: string;
+      };
 
-    let ravintolatError: PostgrestError | null = null;
+      if (!res.ok || !payload.menu) {
+        setStatus("error");
+        return;
+      }
 
-    if (!error) {
-      const { error: updateModeError } = await supabase
-        .from("ravintolat")
-        .update({ menu_mode: "manual" })
-        .eq("id", selected);
-      ravintolatError = updateModeError;
-    }
+      const savedMenu = payload.menu;
 
-    if (!error && !ravintolatError) {
       setStatus("success");
       setMenus((prev) => {
         const idx = prev.findIndex((m) => m.restaurant_id === selected);
         if (idx > -1) {
           const copy = [...prev];
-          copy[idx] = { ...copy[idx], menu_text: menu };
+          copy[idx] = savedMenu;
           return copy;
         }
-        return [
-          ...prev,
-          { id: crypto.randomUUID(), restaurant_id: selected, menu_text: menu },
-        ];
+        return [...prev, savedMenu];
       });
-    } else {
+    } catch {
       setStatus("error");
     }
   }
 
-  async function handleUpdate() {
-    const { data } = await supabase.auth.getSession();
-    const accessToken = data.session?.access_token;
+  async function handleDelete() {
+    if (!selectedToDelete) return;
 
-    const res = await fetch("/api/refresh-lunches", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+    setDeleteStatus("loading");
+    setDeleteMessage("");
 
-    setUpdateStatus(res.ok ? "success" : "error");
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+
+      if (!accessToken) {
+        setDeleteStatus("error");
+        setDeleteMessage("Kirjautuminen vanheni. Kirjaudu uudelleen.");
+        return;
+      }
+
+      const res = await fetch("/api/admin/restaurants", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ restaurantId: selectedToDelete }),
+      });
+
+      const payload = (await res.json()) as {
+        deleted?: boolean;
+        error?: string;
+        restaurant?: { id: string; name: string };
+      };
+
+      if (!res.ok || !payload.deleted || !payload.restaurant) {
+        setDeleteStatus("error");
+        setDeleteMessage(payload.error ?? "Ravintolan poisto epäonnistui.");
+        return;
+      }
+
+      setRestaurants((prev) =>
+        prev.filter((restaurant) => restaurant.id !== selectedToDelete),
+      );
+      setMenus((prev) =>
+        prev.filter((menuRow) => menuRow.restaurant_id !== selectedToDelete),
+      );
+
+      if (selected === selectedToDelete) {
+        setSelected("");
+        setMenu("");
+        setStatus("idle");
+      }
+
+      setSelectedToDelete("");
+      setMenu("");
+      setDeleteStatus("success");
+      setDeleteMessage(`Ravintola poistettu: ${payload.restaurant.name}`);
+    } catch {
+      setDeleteStatus("error");
+      setDeleteMessage("Ravintolan poisto epäonnistui.");
+    }
   }
 
+  async function handleUpdate() {
+    setUpdateStatus("loading");
+    setRefreshMessage("");
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+
+      if (!accessToken) {
+        setUpdateStatus("error");
+        setRefreshMessage("Kirjautuminen vanheni. Kirjaudu uudelleen.");
+        return;
+      }
+
+      const res = await fetch("/api/refresh-lunches", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const payload = (await res.json()) as {
+        started?: boolean;
+        message?: string;
+        error?: string;
+        run?: RefreshRun | null;
+      };
+
+      if (!res.ok) {
+        setUpdateStatus("error");
+        setRefreshMessage(payload.error ?? "Päivitys epäonnistui.");
+        return;
+      }
+
+      setRefreshRun(payload.run ?? null);
+      setRefreshMessage(payload.message ?? "Päivityksen tila päivitetty.");
+      setUpdateStatus("success");
+    } catch {
+      setUpdateStatus("error");
+      setRefreshMessage("Päivitys epäonnistui.");
+    }
+  }
+
+  const isRefreshActive = refreshRun?.isActive ?? false;
+  const refreshStatusText = formatRefreshStatus(refreshRun);
+  const progressPercent = refreshRun?.progressPercent ?? 0;
+
   return (
-    <div>
-      <h1>Hallinta</h1>
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <h1 className="text-2xl font-bold">Hallinta</h1>
 
-      {/* 1. OpenAI-päivitys */}
-      <button
-        type="button"
-        onClick={handleUpdate}
-        disabled={updateStatus === "loading"}
-        className="p-2 bg-blue-500 text-white rounded"
-      >
-        Päivitä ruokalistat OpenAI:lla
-      </button>
-      {updateStatus === "loading" && <p>Päivitetään...</p>}
-      {updateStatus === "success" && (
-        <p>Päivitys käynnistetty! Tämä voi kestää hetken.</p>
-      )}
-      {updateStatus === "error" && <p>Päivitys epäonnistui.</p>}
+      {loadError ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError}
+        </p>
+      ) : null}
 
-      <hr style={{ margin: "2em 0" }} />
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold">Automaattinen päivitys</h2>
+        <button
+          type="button"
+          onClick={handleUpdate}
+          disabled={updateStatus === "loading" || isRefreshActive}
+          className="rounded-md bg-blue-600 px-4 py-2 text-white disabled:opacity-60"
+        >
+          {updateStatus === "loading"
+            ? "Tarkistetaan..."
+            : isRefreshActive
+              ? "Päivitys käynnissä"
+              : "Päivitä ruokalistat OpenAI:lla"}
+        </button>
 
-      <label htmlFor="restaurant-select">Valitse ravintola:</label>
-      <select
-        id="restaurant-select"
-        value={selected}
-        onChange={(e) => setSelected(e.target.value)}
-        style={{ marginLeft: 8, marginBottom: 16 }}
-      >
-        <option value="">-- Valitse --</option>
-        {restaurants.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
-      </select>
-      {selected && (
-        <div style={{ marginTop: 16 }}>
-          <h2>Muokkaa ruokalistaa:</h2>
-          <textarea
-            value={menu}
-            onChange={(e) => setMenu(e.target.value)}
-            rows={8}
-            cols={40}
-            style={{ display: "block", marginBottom: 8 }}
-          />
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={status === "loading" || !menu.trim()}
-            className="p-2 bg-green-600 text-white rounded"
-          >
-            Tallenna ruokalista
-          </button>
-          {status === "success" && <p>Menu päivitetty onnistuneesti!</p>}
-          {status === "error" && <p>Päivitys epäonnistui.</p>}
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-gray-700">
+            Tila: <span className="font-medium">{refreshStatusText}</span>
+          </p>
+
+          {refreshRun ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Ajo #{refreshRun.runNumber} päivitetty{" "}
+                {formatTimestamp(refreshRun.updatedAt)}
+              </p>
+
+              {refreshRun.totalSteps > 0 ? (
+                <>
+                  <div className="h-2 w-full max-w-xl overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full bg-blue-600 transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {refreshRun.completedSteps} / {refreshRun.totalSteps}{" "}
+                    vaihetta valmiina
+                    {refreshRun.currentStep
+                      ? ` • Nyt: ${refreshRun.currentStep}`
+                      : ""}
+                  </p>
+                </>
+              ) : isRefreshActive ? (
+                <p className="text-sm text-gray-600">
+                  Workflow on käynnistynyt, vaiheiden tietoja haetaan...
+                </p>
+              ) : null}
+
+              <a
+                href={refreshRun.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-sm font-medium text-blue-700 hover:underline"
+              >
+                Avaa GitHub Actions -ajo
+              </a>
+            </>
+          ) : null}
+
+          {refreshMessage ? (
+            <p
+              className={`text-sm ${
+                updateStatus === "error" ? "text-red-700" : "text-green-700"
+              }`}
+            >
+              {refreshMessage}
+            </p>
+          ) : null}
         </div>
-      )}
+      </section>
 
-      <hr style={{ margin: "2em 0" }} />
-    </div>
+      <AddRestaurantForm onRestaurantAdded={handleRestaurantAdded} />
+
+      <DeleteRestaurantPanel
+        restaurants={restaurants}
+        selected={selectedToDelete}
+        deleteStatus={deleteStatus}
+        deleteMessage={deleteMessage}
+        onSelect={setSelectedToDelete}
+        onDelete={handleDelete}
+      />
+
+      <MenuEditor
+        restaurants={restaurants}
+        selected={selected}
+        menu={menu}
+        status={status}
+        onSelect={setSelected}
+        onMenuChange={setMenu}
+        onSave={handleSave}
+      />
+    </main>
   );
 }

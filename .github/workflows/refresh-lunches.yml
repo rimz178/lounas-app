@@ -8,6 +8,10 @@ on:
   workflow_dispatch:
     # Tämä mahdollistaa manuaalisen käynnistyksen GitHubin Actions-välilehdeltä
 
+concurrency:
+  group: refresh-lunches
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
