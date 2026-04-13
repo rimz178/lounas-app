@@ -41,7 +41,36 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function useNearbyRestaurants(radiusKm = 2) {
+export type ManualArea = "helsinki" | "vantaa" | "espoo";
+
+const AREA_CENTERS: Record<ManualArea, { lat: number; lng: number }> = {
+  helsinki: { lat: 60.1699, lng: 24.9384 },
+  vantaa: { lat: 60.2934, lng: 25.0378 },
+  espoo: { lat: 60.2055, lng: 24.6559 },
+};
+
+const AREA_BOUNDS: Record<
+  ManualArea,
+  { minLat: number; maxLat: number; minLng: number; maxLng: number }
+> = {
+  // Broad city envelopes to avoid missing restaurants near municipal edges.
+  helsinki: { minLat: 60.1000, maxLat: 60.3200, minLng: 24.7800, maxLng: 25.2200 },
+  vantaa: { minLat: 60.1900, maxLat: 60.3800, minLng: 24.7800, maxLng: 25.2800 },
+  espoo: { minLat: 60.1000, maxLat: 60.3400, minLng: 24.4500, maxLng: 24.9400 },
+};
+
+type NearbyRestaurantsOptions = {
+  useLocation?: boolean;
+  manualArea?: ManualArea;
+  radiusKm?: number;
+};
+
+export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
+  const {
+    useLocation = true,
+    manualArea = "helsinki",
+    radiusKm = 6,
+  } = options;
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -95,7 +124,13 @@ export function useNearbyRestaurants(radiusKm = 2) {
   }, [fetchRestaurants]);
 
   useEffect(() => {
+    if (!useLocation) {
+      setUserLocation(null);
+      return;
+    }
+
     if (!("geolocation" in navigator)) return;
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const lat = pos.coords.latitude;
@@ -113,17 +148,36 @@ export function useNearbyRestaurants(radiusKm = 2) {
       if (typeof watchId === "number")
         navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
+  }, [useLocation]);
 
   const safeRadiusKm = Number.isFinite(radiusKm) ? Math.max(0, radiusKm) : 0;
-  const shownRestaurants =
-    userLocation == null
-      ? restaurants
-      : restaurants.filter(
-          (r) =>
-            getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
-            safeRadiusKm,
-        );
+  const manualCenter = AREA_CENTERS[manualArea];
+  const manualBounds = AREA_BOUNDS[manualArea];
+
+  const shownRestaurants = restaurants.filter((r) => {
+    if (!isValidLat(r.lat) || !isValidLng(r.lng)) return false;
+
+    if (useLocation) {
+      if (userLocation == null) return true;
+      return (
+        getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
+        safeRadiusKm
+      );
+    }
+
+    const insideManualBounds =
+      r.lat >= manualBounds.minLat &&
+      r.lat <= manualBounds.maxLat &&
+      r.lng >= manualBounds.minLng &&
+      r.lng <= manualBounds.maxLng;
+
+    if (insideManualBounds) return true;
+
+    // Fallback radius near city center for edge cases with slightly noisy coords.
+    return (
+      getDistanceKm(manualCenter.lat, manualCenter.lng, r.lat, r.lng) < 8
+    );
+  });
 
   return {
     restaurants: shownRestaurants,

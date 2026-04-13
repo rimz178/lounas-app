@@ -1,47 +1,57 @@
 "use client";
-import { useState } from "react";
-import { useNearbyRestaurants } from "../service/userNearbyRestaurant";
+
+import { useMemo, useState } from "react";
+import {
+  useNearbyRestaurants,
+  type ManualArea,
+} from "../service/userNearbyRestaurant";
 import RestaurantMap from "./Map";
 import RestaurantList from "./restaurantList";
+import RestaurantSearchBar from "./RestaurantSearchBar";
 
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     string | undefined
   >(undefined);
-  const [radius, setRadius] = useState(2);
-  const { restaurants, userLocation } = useNearbyRestaurants(radius);
+  const [query, setQuery] = useState("");
+  const [useLocation, setUseLocation] = useState(false);
+  const [manualArea, setManualArea] = useState<ManualArea>("vantaa");
+
+  const { restaurants, userLocation } = useNearbyRestaurants({
+    useLocation,
+    manualArea,
+    radiusKm: 6,
+  });
+
+  const filteredRestaurants = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase("fi-FI");
+    if (!normalizedQuery) return restaurants;
+
+    return restaurants.filter((restaurant) =>
+      restaurant.name.toLocaleLowerCase("fi-FI").includes(normalizedQuery),
+    );
+  }, [restaurants, query]);
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 mt-4">
-        <label htmlFor="radius" className="text-base sm:text-lg font-semibold">
-          Näytä ravintolat säteellä
-        </label>
-        <input
-          id="radius"
-          type="number"
-          min={1}
-          max={30}
-          value={radius}
-          onChange={(e) => {
-            const { value } = e.target;
-            if (value === "") return;
-            const parsed = parseInt(value, 10);
-            if (Number.isNaN(parsed)) return;
-            const clamped = Math.min(30, Math.max(1, parsed));
-            setRadius(clamped);
-          }}
-          className="w-16 px-2 py-1 border rounded text-base"
-        />
-        <span className="text-base sm:text-lg">km</span>
-      </div>
+      <RestaurantSearchBar
+        value={query}
+        onChange={setQuery}
+        useLocation={useLocation}
+        onUseLocationChange={setUseLocation}
+        manualArea={manualArea}
+        onManualAreaChange={(value) => setManualArea(value as ManualArea)}
+        resultText={`${filteredRestaurants.length} ravintolaa`}
+      />
+
       <RestaurantMap
         selectedRestaurantId={selectedRestaurantId}
         onSelectRestaurantId={setSelectedRestaurantId}
-        restaurants={restaurants}
-        userLocation={userLocation}
+        restaurants={filteredRestaurants}
+        userLocation={useLocation ? userLocation : null}
       />
-      <RestaurantList restaurants={restaurants} />
+
+      <RestaurantList restaurants={filteredRestaurants} />
     </>
   );
 }
