@@ -35,12 +35,13 @@ export default function HomeClient() {
 
   return (
     <>
-      <section className="w-full">
-        <div className="mx-auto max-w-7xl px-4">
+      <section className="w-full bg-neutral-900 py-2">
+        <div className="px-4 sm:px-8">
           <RestaurantSearchBar
             value={query}
             onChange={setQuery}
             compact
+            tone="dark"
             useLocation={useLocation}
             onUseLocationChange={setUseLocation}
             manualArea={manualArea}
