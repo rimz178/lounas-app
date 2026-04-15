@@ -43,22 +43,17 @@ export function getDistanceKm(
 
 export type ManualArea = "kaikki" | "helsinki" | "vantaa" | "espoo";
 
-export const AREA_CENTERS: Record<Exclude<ManualArea, "kaikki">, { lat: number; lng: number }> = {
-  helsinki: { lat: 60.1699, lng: 24.9384 },
-  vantaa: { lat: 60.2934, lng: 25.0378 },
-  espoo: { lat: 60.2055, lng: 24.6559 },
-};
 
 export const AREA_BOUNDS: Record<
   Exclude<ManualArea, "kaikki">,
   { minLat: number; maxLat: number; minLng: number; maxLng: number }
 > = {
-  // Non-overlapping city envelopes based on approximate municipal boundaries.
-  // Helsinki is south of Vantaa (border ~60.295) and east of Espoo (border ~24.88).
   helsinki: { minLat: 60.10, maxLat: 60.295, minLng: 24.82, maxLng: 25.26 },
   vantaa:   { minLat: 60.27, maxLat: 60.43,  minLng: 24.82, maxLng: 25.30 },
   espoo:    { minLat: 60.09, maxLat: 60.37,  minLng: 24.44, maxLng: 24.88 },
 };
+
+export const DEFAULT_RADIUS_KM = 6;
 
 type NearbyRestaurantsOptions = {
   useLocation?: boolean;
@@ -70,7 +65,7 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
   const {
     useLocation = true,
     manualArea = "helsinki",
-    radiusKm = 6,
+    radiusKm = DEFAULT_RADIUS_KM,
   } = options;
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
@@ -152,7 +147,6 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
   }, [useLocation]);
 
   const safeRadiusKm = Number.isFinite(radiusKm) ? Math.max(0, radiusKm) : 0;
-  const manualBounds = manualArea !== "kaikki" ? AREA_BOUNDS[manualArea] : AREA_BOUNDS.helsinki;
 
   const shownRestaurants = restaurants.filter((r) => {
     if (!isValidLat(r.lat) || !isValidLng(r.lng)) return false;
@@ -167,6 +161,7 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
 
     if (manualArea === "kaikki") return true;
 
+    const manualBounds = AREA_BOUNDS[manualArea];
     return (
       r.lat >= manualBounds.minLat &&
       r.lat <= manualBounds.maxLat &&

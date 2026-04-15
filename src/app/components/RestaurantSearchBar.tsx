@@ -1,6 +1,14 @@
 // src/app/components/RestaurantSearchBar.tsx
 "use client";
 
+import type { ManualArea } from "../service/userNearbyRestaurant";
+
+const MANUAL_AREAS: ManualArea[] = ["kaikki", "helsinki", "vantaa", "espoo"];
+
+function isManualArea(value: string): value is ManualArea {
+  return MANUAL_AREAS.includes(value as ManualArea);
+}
+
 type RestaurantSearchBarProps = {
   value: string;
   onChange: (value: string) => void;
@@ -8,8 +16,8 @@ type RestaurantSearchBarProps = {
   resultText?: string;
   useLocation?: boolean;
   onUseLocationChange?: (value: boolean) => void;
-  manualArea?: string;
-  onManualAreaChange?: (value: string) => void;
+  manualArea?: ManualArea;
+  onManualAreaChange?: (value: ManualArea) => void;
 };
 
 export default function RestaurantSearchBar({
@@ -54,7 +62,12 @@ export default function RestaurantSearchBar({
           <select
             id="restaurant-area"
             value={manualArea ?? "kaikki"}
-            onChange={(e) => onManualAreaChange(e.target.value)}
+            onChange={(e) => {
+              const nextArea = e.target.value;
+              if (isManualArea(nextArea)) {
+                onManualAreaChange(nextArea);
+              }
+            }}
             className="rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-700"
           >
             <option value="kaikki">Kaikki alueet</option>

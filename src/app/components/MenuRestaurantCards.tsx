@@ -25,6 +25,7 @@ type MenuSection = {
   title: string | null;
   items: string[];
 };
+export const DEFAULT_RADIUS_KM = 6;
 
 const dayHeadingPattern =
   /^(maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|ma\s*-\s*pe|ma-pe|koko viikon|viikon lounas|tanaan|tänään|today)\b/i;
@@ -132,7 +133,8 @@ export default function MenuRestaurantCards({
         if (userLocation == null) return true;
         if (r.lat == null || r.lng == null) return false;
         return (
-          getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) < 5
+          getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
+          DEFAULT_RADIUS_KM
         );
       }
       if (manualArea === "kaikki") return true;
@@ -178,7 +180,7 @@ export default function MenuRestaurantCards({
         }}
         manualArea={manualArea}
         onManualAreaChange={(v) => {
-          setManualArea(v as ManualArea);
+          setManualArea(v);
           setPage(0);
         }}
         resultText={`${filteredRestaurants.length} / ${restaurants.length} ravintolaa`}

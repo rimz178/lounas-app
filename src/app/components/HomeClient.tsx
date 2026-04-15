@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   useNearbyRestaurants,
   type ManualArea,
+  DEFAULT_RADIUS_KM,
 } from "../service/userNearbyRestaurant";
 import RestaurantMap from "./Map";
 import RestaurantList from "./restaurantList";
@@ -20,7 +21,7 @@ export default function HomeClient() {
   const { restaurants, userLocation } = useNearbyRestaurants({
     useLocation,
     manualArea,
-    radiusKm: 6,
+    radiusKm: DEFAULT_RADIUS_KM,
   });
 
   const filteredRestaurants = useMemo(() => {
@@ -40,7 +41,7 @@ export default function HomeClient() {
         useLocation={useLocation}
         onUseLocationChange={setUseLocation}
         manualArea={manualArea}
-        onManualAreaChange={(value) => setManualArea(value as ManualArea)}
+        onManualAreaChange={setManualArea}
         resultText={`${filteredRestaurants.length} ravintolaa`}
       />
 
