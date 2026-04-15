@@ -43,14 +43,13 @@ export function getDistanceKm(
 
 export type ManualArea = "kaikki" | "helsinki" | "vantaa" | "espoo";
 
-
 export const AREA_BOUNDS: Record<
   Exclude<ManualArea, "kaikki">,
   { minLat: number; maxLat: number; minLng: number; maxLng: number }
 > = {
-  helsinki: { minLat: 60.10, maxLat: 60.295, minLng: 24.82, maxLng: 25.26 },
-  vantaa:   { minLat: 60.27, maxLat: 60.43,  minLng: 24.82, maxLng: 25.30 },
-  espoo:    { minLat: 60.09, maxLat: 60.37,  minLng: 24.44, maxLng: 24.88 },
+  helsinki: { minLat: 60.1, maxLat: 60.295, minLng: 24.82, maxLng: 25.26 },
+  vantaa: { minLat: 60.27, maxLat: 60.43, minLng: 24.82, maxLng: 25.3 },
+  espoo: { minLat: 60.09, maxLat: 60.37, minLng: 24.44, maxLng: 24.88 },
 };
 
 export const DEFAULT_RADIUS_KM = 6;
@@ -64,9 +63,10 @@ type NearbyRestaurantsOptions = {
 export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
   const {
     useLocation = true,
-    manualArea = "helsinki",
+    manualArea: providedManualArea,
     radiusKm = DEFAULT_RADIUS_KM,
   } = options;
+  const manualArea = providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;

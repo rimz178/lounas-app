@@ -7,6 +7,7 @@ import RestaurantSearchBar from "./RestaurantSearchBar";
 import {
   type ManualArea,
   AREA_BOUNDS,
+  DEFAULT_RADIUS_KM,
   getDistanceKm,
   isValidLat,
   isValidLng,
@@ -25,7 +26,6 @@ type MenuSection = {
   title: string | null;
   items: string[];
 };
-export const DEFAULT_RADIUS_KM = 6;
 
 const dayHeadingPattern =
   /^(maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|ma\s*-\s*pe|ma-pe|koko viikon|viikon lounas|tanaan|tänään|today)\b/i;

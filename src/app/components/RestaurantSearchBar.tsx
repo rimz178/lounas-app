@@ -1,6 +1,7 @@
 // src/app/components/RestaurantSearchBar.tsx
 "use client";
 
+import { useId } from "react";
 import type { ManualArea } from "../service/userNearbyRestaurant";
 
 const MANUAL_AREAS: ManualArea[] = ["kaikki", "helsinki", "vantaa", "espoo"];
@@ -36,6 +37,8 @@ export default function RestaurantSearchBar({
 }: RestaurantSearchBarProps) {
   const isDark = tone === "dark";
   const isToolbar = isDark && compact;
+  const searchId = useId();
+  const areaId = useId();
 
   const containerClassName = isToolbar
     ? "mt-0 border-y border-neutral-800 bg-neutral-900 px-0 py-2"
@@ -55,9 +58,8 @@ export default function RestaurantSearchBar({
       ? "mb-2 block text-sm font-semibold text-neutral-100"
       : "mb-2 block text-sm font-semibold text-gray-700";
 
-  const controlsGapClassName = compact
-    ? "flex flex-col gap-2 sm:flex-row sm:items-center"
-    : "flex flex-col gap-2 sm:flex-row sm:items-center";
+  const controlsGapClassName =
+    "flex flex-col gap-2 sm:flex-row sm:items-center";
 
   const inputClassName = isToolbar
     ? "w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-100 outline-none transition placeholder:text-neutral-500 focus:border-neutral-500"
@@ -116,7 +118,7 @@ export default function RestaurantSearchBar({
   return (
     <div className={containerClassName}>
       {!isToolbar ? (
-        <label htmlFor="restaurant-search" className={labelClassName}>
+        <label htmlFor={searchId} className={labelClassName}>
           Hae ravintolaa
         </label>
       ) : null}
@@ -135,11 +137,11 @@ export default function RestaurantSearchBar({
 
       {!isToolbar && onManualAreaChange && !useLocation ? (
         <div className={areaRowClassName}>
-          <label htmlFor="restaurant-area" className={areaLabelClassName}>
+          <label htmlFor={areaId} className={areaLabelClassName}>
             Hae tältä alueelta
           </label>
           <select
-            id="restaurant-area"
+            id={areaId}
             value={manualArea ?? "kaikki"}
             onChange={(e) => {
               const nextArea = e.target.value;
@@ -160,7 +162,7 @@ export default function RestaurantSearchBar({
       {isToolbar ? (
         <div className="flex flex-wrap items-center gap-2">
           <input
-            id="restaurant-search"
+            id={searchId}
             type="search"
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -170,11 +172,11 @@ export default function RestaurantSearchBar({
 
           {onManualAreaChange && !useLocation ? (
             <div className={areaRowClassName}>
-              <label htmlFor="restaurant-area" className={areaLabelClassName}>
+              <label htmlFor={areaId} className={areaLabelClassName}>
                 Hae tältä alueelta
               </label>
               <select
-                id="restaurant-area"
+                id={areaId}
                 value={manualArea ?? "kaikki"}
                 onChange={(e) => {
                   const nextArea = e.target.value;
@@ -215,7 +217,7 @@ export default function RestaurantSearchBar({
       ) : (
         <div className={controlsGapClassName}>
           <input
-            id="restaurant-search"
+            id={searchId}
             type="search"
             value={value}
             onChange={(e) => onChange(e.target.value)}
