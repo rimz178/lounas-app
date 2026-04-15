@@ -8,15 +8,15 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isValidLat(lat: unknown): lat is number {
+export function isValidLat(lat: unknown): lat is number {
   return isFiniteNumber(lat) && lat >= -90 && lat <= 90;
 }
 
-function isValidLng(lng: unknown): lng is number {
+export function isValidLng(lng: unknown): lng is number {
   return isFiniteNumber(lng) && lng >= -180 && lng <= 180;
 }
 
-function getDistanceKm(
+export function getDistanceKm(
   lat1: number,
   lng1: number,
   lat2: number,
@@ -41,22 +41,23 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export type ManualArea = "helsinki" | "vantaa" | "espoo";
+export type ManualArea = "kaikki" | "helsinki" | "vantaa" | "espoo";
 
-const AREA_CENTERS: Record<ManualArea, { lat: number; lng: number }> = {
+export const AREA_CENTERS: Record<Exclude<ManualArea, "kaikki">, { lat: number; lng: number }> = {
   helsinki: { lat: 60.1699, lng: 24.9384 },
   vantaa: { lat: 60.2934, lng: 25.0378 },
   espoo: { lat: 60.2055, lng: 24.6559 },
 };
 
-const AREA_BOUNDS: Record<
-  ManualArea,
+export const AREA_BOUNDS: Record<
+  Exclude<ManualArea, "kaikki">,
   { minLat: number; maxLat: number; minLng: number; maxLng: number }
 > = {
-  // Broad city envelopes to avoid missing restaurants near municipal edges.
-  helsinki: { minLat: 60.1000, maxLat: 60.3200, minLng: 24.7800, maxLng: 25.2200 },
-  vantaa: { minLat: 60.1900, maxLat: 60.3800, minLng: 24.7800, maxLng: 25.2800 },
-  espoo: { minLat: 60.1000, maxLat: 60.3400, minLng: 24.4500, maxLng: 24.9400 },
+  // Non-overlapping city envelopes based on approximate municipal boundaries.
+  // Helsinki is south of Vantaa (border ~60.295) and east of Espoo (border ~24.88).
+  helsinki: { minLat: 60.10, maxLat: 60.295, minLng: 24.82, maxLng: 25.26 },
+  vantaa:   { minLat: 60.27, maxLat: 60.43,  minLng: 24.82, maxLng: 25.30 },
+  espoo:    { minLat: 60.09, maxLat: 60.37,  minLng: 24.44, maxLng: 24.88 },
 };
 
 type NearbyRestaurantsOptions = {
@@ -151,8 +152,7 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
   }, [useLocation]);
 
   const safeRadiusKm = Number.isFinite(radiusKm) ? Math.max(0, radiusKm) : 0;
-  const manualCenter = AREA_CENTERS[manualArea];
-  const manualBounds = AREA_BOUNDS[manualArea];
+  const manualBounds = manualArea !== "kaikki" ? AREA_BOUNDS[manualArea] : AREA_BOUNDS.helsinki;
 
   const shownRestaurants = restaurants.filter((r) => {
     if (!isValidLat(r.lat) || !isValidLng(r.lng)) return false;
@@ -165,17 +165,13 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
       );
     }
 
-    const insideManualBounds =
+    if (manualArea === "kaikki") return true;
+
+    return (
       r.lat >= manualBounds.minLat &&
       r.lat <= manualBounds.maxLat &&
       r.lng >= manualBounds.minLng &&
-      r.lng <= manualBounds.maxLng;
-
-    if (insideManualBounds) return true;
-
-    // Fallback radius near city center for edge cases with slightly noisy coords.
-    return (
-      getDistanceKm(manualCenter.lat, manualCenter.lng, r.lat, r.lng) < 8
+      r.lng <= manualBounds.maxLng
     );
   });
 

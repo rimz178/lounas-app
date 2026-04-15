@@ -53,10 +53,11 @@ export default function RestaurantSearchBar({
           </label>
           <select
             id="restaurant-area"
-            value={manualArea ?? "vantaa"}
+            value={manualArea ?? "kaikki"}
             onChange={(e) => onManualAreaChange(e.target.value)}
             className="rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-700"
           >
+            <option value="kaikki">Kaikki alueet</option>
             <option value="helsinki">Helsinki</option>
             <option value="vantaa">Vantaa</option>
             <option value="espoo">Espoo</option>

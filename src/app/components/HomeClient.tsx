@@ -15,7 +15,7 @@ export default function HomeClient() {
   >(undefined);
   const [query, setQuery] = useState("");
   const [useLocation, setUseLocation] = useState(false);
-  const [manualArea, setManualArea] = useState<ManualArea>("vantaa");
+  const [manualArea, setManualArea] = useState<ManualArea>("kaikki");
 
   const { restaurants, userLocation } = useNearbyRestaurants({
     useLocation,
