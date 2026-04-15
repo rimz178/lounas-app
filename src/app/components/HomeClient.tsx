@@ -35,15 +35,20 @@ export default function HomeClient() {
 
   return (
     <>
-      <RestaurantSearchBar
-        value={query}
-        onChange={setQuery}
-        useLocation={useLocation}
-        onUseLocationChange={setUseLocation}
-        manualArea={manualArea}
-        onManualAreaChange={setManualArea}
-        resultText={`${filteredRestaurants.length} ravintolaa`}
-      />
+      <section className="w-full">
+        <div className="mx-auto max-w-7xl px-4">
+          <RestaurantSearchBar
+            value={query}
+            onChange={setQuery}
+            compact
+            useLocation={useLocation}
+            onUseLocationChange={setUseLocation}
+            manualArea={manualArea}
+            onManualAreaChange={setManualArea}
+            resultText={`${filteredRestaurants.length} ravintolaa`}
+          />
+        </div>
+      </section>
 
       <RestaurantMap
         selectedRestaurantId={selectedRestaurantId}

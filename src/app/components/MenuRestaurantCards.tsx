@@ -124,8 +124,11 @@ export default function MenuRestaurantCards({
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const canExpandMenu = (menuText: string | null | undefined) =>
-    !!menuText && menuText.length > 320;
+  const canExpandMenu = (menuText: string | null | undefined) => {
+    if (!menuText) return false;
+    const lineCount = menuText.split(/\r?\n/).filter(Boolean).length;
+    return menuText.length > 220 || lineCount > 8;
+  };
 
   const areaFilteredRestaurants = useMemo(() => {
     return restaurants.filter((r) => {
@@ -198,7 +201,7 @@ export default function MenuRestaurantCards({
           return (
             <article
               key={restaurant.id}
-              className="flex h-[420px] flex-col rounded-3xl border border-gray-200 bg-white p-5 shadow-md"
+              className="flex h-[420px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-md"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <h2 className="text-xl font-semibold text-gray-900">

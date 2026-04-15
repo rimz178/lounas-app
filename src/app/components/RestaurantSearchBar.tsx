@@ -14,6 +14,7 @@ type RestaurantSearchBarProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   resultText?: string;
+  compact?: boolean;
   useLocation?: boolean;
   onUseLocationChange?: (value: boolean) => void;
   manualArea?: ManualArea;
@@ -25,17 +26,35 @@ export default function RestaurantSearchBar({
   onChange,
   placeholder = "Etsi ravintolaa nimellä...",
   resultText,
+  compact = false,
   useLocation,
   onUseLocationChange,
   manualArea,
   onManualAreaChange,
 }: RestaurantSearchBarProps) {
+  const containerClassName = compact
+    ? "mt-2 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm"
+    : "mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm";
+
+  const labelClassName = compact
+    ? "mb-1 block text-sm font-semibold text-gray-700"
+    : "mb-2 block text-sm font-semibold text-gray-700";
+
+  const controlsGapClassName = compact
+    ? "flex flex-col gap-2 sm:flex-row sm:items-center"
+    : "flex flex-col gap-2 sm:flex-row sm:items-center";
+
+  const inputClassName = compact
+    ? "w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none transition focus:border-gray-500"
+    : "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-500";
+
+  const buttonClassName = compact
+    ? "shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+    : "shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100";
+
   return (
-    <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <label
-        htmlFor="restaurant-search"
-        className="mb-2 block text-sm font-semibold text-gray-700"
-      >
+    <div className={containerClassName}>
+      <label htmlFor="restaurant-search" className={labelClassName}>
         Hae ravintolaa
       </label>
 
@@ -78,20 +97,20 @@ export default function RestaurantSearchBar({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className={controlsGapClassName}>
         <input
           id="restaurant-search"
           type="search"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-gray-500"
+          className={inputClassName}
         />
         {value ? (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className={buttonClassName}
           >
             Tyhjenna
           </button>
