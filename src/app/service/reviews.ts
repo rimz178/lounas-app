@@ -1,5 +1,9 @@
 import { supabase } from "./supabaseClient";
-
+/**
+ *  Hakee ravintoloiden arvostelutilastot (keskimääräisen arvosanan ja arvosteluiden määrän) Supabasen "reviews"-taulusta.
+ * @param ids  Lista ravintoloiden ID:itä, joiden arvostelutilastoja halutaan hakea
+ * @returns  Objekti, jossa avaimina ravintoloiden ID:t ja arvoina objektit, jotka sisältävät keskimääräisen arvosanan ja arvosteluiden määrän 
+ */
 export async function getReviewStatsByRestaurant(
   ids: string[],
 ): Promise<Record<string, { average: number; count: number }>> {

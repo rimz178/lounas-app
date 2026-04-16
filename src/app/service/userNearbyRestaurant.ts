@@ -3,7 +3,10 @@ import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
 import { getReviewStatsByRestaurant } from "./reviews";
 
 import type { Restaurant } from "./types";
-
+/**
+ *  Hakee käyttäjän lähellä olevat ravintolat ja niiden ruokalistat Supabasen tietokannasta.
+  
+ */
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }

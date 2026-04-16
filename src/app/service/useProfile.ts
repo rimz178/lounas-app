@@ -6,7 +6,10 @@ type Profile = {
   id: string;
   role: "admin" | "user";
 };
-
+/**
+ *  Hakee ja palauttaa kirjautuneen käyttäjän profiilitiedot Supabasesta.
+ * 
+ */
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);

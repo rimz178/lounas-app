@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
+/**
+ * Tämä tiedosto sisältää API-reitit ravintoloiden hallintaan admin-käyttöliittymässä.
+ */
 type GeocodeApiResult = {
   lat: string;
   lon: string;
@@ -351,10 +353,6 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  // Related menus and reviews are removed automatically by the database.
-  // The schema enforces ON DELETE CASCADE:
-  //   menus.restaurant_id → ravintolat.id ON DELETE CASCADE
-  //   reviews.restaurant_id → ravintolat.id ON DELETE CASCADE
   const { error: deleteRestaurantError } = await supabase
     .from("ravintolat")
     .delete()
