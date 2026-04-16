@@ -12,7 +12,9 @@ import {
   isValidLat,
   isValidLng,
 } from "../service/userNearbyRestaurant";
-
+/**
+ * MenuRestaurantCards-komponentti, joka näyttää ravintolat kortteina, joissa on niiden ruokalistat.
+ */
 type RestaurantMenu = {
   id: string;
   name: string;

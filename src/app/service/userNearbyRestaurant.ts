@@ -3,7 +3,9 @@ import { getLatestMenusByRestaurant, getRestaurants } from "./restaurants";
 import { getReviewStatsByRestaurant } from "./reviews";
 
 import type { Restaurant } from "./types";
-
+/**
+ *  Hakee käyttäjän lähellä olevat ravintolat ja niiden ruokalistat Supabasen tietokannasta.
+ */
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -66,7 +68,8 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
     manualArea: providedManualArea,
     radiusKm = DEFAULT_RADIUS_KM,
   } = options;
-  const manualArea = providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
+  const manualArea =
+    providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;

@@ -9,7 +9,11 @@ const MANUAL_AREAS: ManualArea[] = ["kaikki", "helsinki", "vantaa", "espoo"];
 function isManualArea(value: string): value is ManualArea {
   return MANUAL_AREAS.includes(value as ManualArea);
 }
-
+/**
+ * RestaurantSearchBar-komponentti, joka näyttää hakupalkin ravintoloiden suodattamiseen nimellä, sijainnilla tai manuaalisella aluevalinnalla.
+ * @param param0  - Komponentin propsit, jotka sisältävät hakupalkin tilan ja tapahtumankäsittelijät
+ * @returns JSX-elementti, joka sisältää hakupalkin ja siihen liittyvät ohjaimet
+ */
 type RestaurantSearchBarProps = {
   value: string;
   onChange: (value: string) => void;
@@ -111,7 +115,7 @@ export default function RestaurantSearchBar({
       ? "mt-1 text-xs text-neutral-300"
       : "mt-2 text-sm text-gray-500";
 
-  const locationButtonClassName = Boolean(useLocation)
+  const locationButtonClassName = useLocation
     ? "shrink-0 rounded-md border border-neutral-500 bg-neutral-700 px-3 py-1.5 text-xs font-semibold text-white"
     : "shrink-0 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs font-semibold text-neutral-100 hover:bg-neutral-700";
 

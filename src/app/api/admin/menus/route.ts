@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
+/**
+ * Tämä tiedosto sisältää API-reitit ruokalistojen hallintaan admin-käyttöliittymässä.
+ */
 type AuthorizedSupabaseContext = {
   supabase: SupabaseClient;
 };

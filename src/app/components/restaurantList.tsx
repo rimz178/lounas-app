@@ -20,7 +20,12 @@ interface RestaurantWithReviews extends Restaurant {
     count: number;
   } | null;
 }
-
+/**
+ *  Näyttää listan ravintoloista, joissa on niiden arvostelutiedot ja mahdollisuus
+ * jättää tai muokata oma arvostelu.
+ * @param param0  - Komponentin propsit, jotka sisältävät listan ravintoloista, joille näytetään arvostelutiedot ja arvostelulomakkeet
+ * @returns  JSX-elementti, joka sisältää kortit ravintoloista, joissa on niiden arvostelutiedot ja mahdollisuus jättää tai muokata oma arvostelu.
+ */
 export default function RestaurantList({
   restaurants,
 }: {

@@ -13,7 +13,11 @@ type Props = {
 };
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
-
+/**
+ * Näyttää lomakkeen, jolla admin-käyttäjät voivat lisätä uusia ravintoloita.
+ * @param param0  - Komponentin propsit, jotka sisältävät onRestaurantAdded-funktion,
+ * joka kutsutaan, kun ravintola on onnistuneesti lisätty
+ */
 export default function AddRestaurantForm({ onRestaurantAdded }: Props) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");

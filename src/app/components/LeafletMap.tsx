@@ -5,6 +5,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import type { Restaurant } from "../service/types";
 
+/**
+ * LeafletMap-komponentti, joka näyttää ravintolat kartalla
+ *  - Käyttää Leaflet-kirjastoa kartan näyttämiseen ja hallintaan
+ */
+
 const leafletVersion = "1.9.4";
 
 L.Icon.Default.mergeOptions({

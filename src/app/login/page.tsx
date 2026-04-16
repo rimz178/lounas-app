@@ -5,6 +5,10 @@ import { supabase } from "../service/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../components/AuthContext";
 
+/**
+ * Kirjautumissivu, joka tarjoaa lomakkeen sähköpostin ja salasanan syöttämiseen. Käyttää Supabasea autentikointiin.
+ * @returns   JSX-elementti, joka sisältää kirjautumislomakkeen ja käsittelee kirjautumisprosessin.
+ */
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

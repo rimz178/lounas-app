@@ -12,7 +12,10 @@ import MenuEditor, {
 } from "../components/admin/MenuEditor";
 import { supabase } from "../service/supabaseClient";
 import { useProfile } from "../service/useProfile";
-
+/**
+ * Hallintasivu, jossa voi päivittää ruokalistat käyttäen OpenAi:ta, lisätä
+ * ravintoloita, poistaa ravintoloita ja muokata ruokalistoja.
+ */
 type UpdateStatus = "idle" | "loading" | "success" | "error";
 type RefreshRun = {
   id: number;
