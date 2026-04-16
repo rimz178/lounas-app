@@ -1,9 +1,17 @@
 // src/app/components/MenuRestaurantCards.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DirectionsButton from "./DirectionsButton";
 import RestaurantSearchBar from "./RestaurantSearchBar";
+import {
+  type ManualArea,
+  AREA_BOUNDS,
+  DEFAULT_RADIUS_KM,
+  getDistanceKm,
+  isValidLat,
+  isValidLng,
+} from "../service/userNearbyRestaurant";
 
 type RestaurantMenu = {
   id: string;
@@ -76,6 +84,38 @@ export default function MenuRestaurantCards({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [useLocation, setUseLocation] = useState(false);
+  const [manualArea, setManualArea] = useState<ManualArea>("kaikki");
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!useLocation) {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setUserLocation(null);
+      return;
+    }
+    if (!("geolocation" in navigator)) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (isValidLat(lat) && isValidLng(lng)) setUserLocation({ lat, lng });
+      },
+      (err) => console.warn("Sijaintia ei saatu:", err),
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 10_000 },
+    );
+    return () => {
+      if (watchIdRef.current != null)
+        navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, [useLocation]);
   const PAGE_SIZE = 10;
   const NO_MENU_SENTINEL = "No lunch menu found.";
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
@@ -84,17 +124,42 @@ export default function MenuRestaurantCards({
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const canExpandMenu = (menuText: string | null | undefined) =>
-    !!menuText && menuText.length > 320;
+  const canExpandMenu = (menuText: string | null | undefined) => {
+    if (!menuText) return false;
+    const lineCount = menuText.split(/\r?\n/).filter(Boolean).length;
+    return menuText.length > 220 || lineCount > 8;
+  };
+
+  const areaFilteredRestaurants = useMemo(() => {
+    return restaurants.filter((r) => {
+      if (useLocation) {
+        if (userLocation == null) return true;
+        if (r.lat == null || r.lng == null) return false;
+        return (
+          getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
+          DEFAULT_RADIUS_KM
+        );
+      }
+      if (manualArea === "kaikki") return true;
+      if (r.lat == null || r.lng == null) return false;
+      const bounds = AREA_BOUNDS[manualArea];
+      return (
+        r.lat >= bounds.minLat &&
+        r.lat <= bounds.maxLat &&
+        r.lng >= bounds.minLng &&
+        r.lng <= bounds.maxLng
+      );
+    });
+  }, [restaurants, useLocation, userLocation, manualArea]);
 
   const filteredRestaurants = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("fi-FI");
-    if (!normalizedQuery) return restaurants;
+    if (!normalizedQuery) return areaFilteredRestaurants;
 
-    return restaurants.filter((restaurant) =>
+    return areaFilteredRestaurants.filter((restaurant) =>
       restaurant.name.toLocaleLowerCase("fi-FI").includes(normalizedQuery),
     );
-  }, [restaurants, query]);
+  }, [areaFilteredRestaurants, query]);
 
   const totalPages = Math.ceil(filteredRestaurants.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(0, totalPages - 1));
@@ -109,6 +174,16 @@ export default function MenuRestaurantCards({
         value={query}
         onChange={(v) => {
           setQuery(v);
+          setPage(0);
+        }}
+        useLocation={useLocation}
+        onUseLocationChange={(v) => {
+          setUseLocation(v);
+          setPage(0);
+        }}
+        manualArea={manualArea}
+        onManualAreaChange={(v) => {
+          setManualArea(v);
           setPage(0);
         }}
         resultText={`${filteredRestaurants.length} / ${restaurants.length} ravintolaa`}
@@ -126,7 +201,7 @@ export default function MenuRestaurantCards({
           return (
             <article
               key={restaurant.id}
-              className="flex h-[420px] flex-col rounded-3xl border border-gray-200 bg-white p-5 shadow-md"
+              className="flex h-[420px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-md"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <h2 className="text-xl font-semibold text-gray-900">

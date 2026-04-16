@@ -8,15 +8,15 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isValidLat(lat: unknown): lat is number {
+export function isValidLat(lat: unknown): lat is number {
   return isFiniteNumber(lat) && lat >= -90 && lat <= 90;
 }
 
-function isValidLng(lng: unknown): lng is number {
+export function isValidLng(lng: unknown): lng is number {
   return isFiniteNumber(lng) && lng >= -180 && lng <= 180;
 }
 
-function getDistanceKm(
+export function getDistanceKm(
   lat1: number,
   lng1: number,
   lat2: number,
@@ -41,7 +41,32 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function useNearbyRestaurants(radiusKm = 2) {
+export type ManualArea = "kaikki" | "helsinki" | "vantaa" | "espoo";
+
+export const AREA_BOUNDS: Record<
+  Exclude<ManualArea, "kaikki">,
+  { minLat: number; maxLat: number; minLng: number; maxLng: number }
+> = {
+  helsinki: { minLat: 60.1, maxLat: 60.295, minLng: 24.82, maxLng: 25.26 },
+  vantaa: { minLat: 60.27, maxLat: 60.43, minLng: 24.82, maxLng: 25.3 },
+  espoo: { minLat: 60.09, maxLat: 60.37, minLng: 24.44, maxLng: 24.88 },
+};
+
+export const DEFAULT_RADIUS_KM = 6;
+
+type NearbyRestaurantsOptions = {
+  useLocation?: boolean;
+  manualArea?: ManualArea;
+  radiusKm?: number;
+};
+
+export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
+  const {
+    useLocation = true,
+    manualArea: providedManualArea,
+    radiusKm = DEFAULT_RADIUS_KM,
+  } = options;
+  const manualArea = providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -95,7 +120,13 @@ export function useNearbyRestaurants(radiusKm = 2) {
   }, [fetchRestaurants]);
 
   useEffect(() => {
+    if (!useLocation) {
+      setUserLocation(null);
+      return;
+    }
+
     if (!("geolocation" in navigator)) return;
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const lat = pos.coords.latitude;
@@ -113,17 +144,31 @@ export function useNearbyRestaurants(radiusKm = 2) {
       if (typeof watchId === "number")
         navigator.geolocation.clearWatch(watchId);
     };
-  }, []);
+  }, [useLocation]);
 
   const safeRadiusKm = Number.isFinite(radiusKm) ? Math.max(0, radiusKm) : 0;
-  const shownRestaurants =
-    userLocation == null
-      ? restaurants
-      : restaurants.filter(
-          (r) =>
-            getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
-            safeRadiusKm,
-        );
+
+  const shownRestaurants = restaurants.filter((r) => {
+    if (!isValidLat(r.lat) || !isValidLng(r.lng)) return false;
+
+    if (useLocation) {
+      if (userLocation == null) return true;
+      return (
+        getDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng) <
+        safeRadiusKm
+      );
+    }
+
+    if (manualArea === "kaikki") return true;
+
+    const manualBounds = AREA_BOUNDS[manualArea];
+    return (
+      r.lat >= manualBounds.minLat &&
+      r.lat <= manualBounds.maxLat &&
+      r.lng >= manualBounds.minLng &&
+      r.lng <= manualBounds.maxLng
+    );
+  });
 
   return {
     restaurants: shownRestaurants,

@@ -68,7 +68,7 @@ async function geocodeAddress(address: string) {
     limit: "1",
   });
 
-   const controller = new AbortController();
+  const controller = new AbortController();
   const timeoutMs = 5000;
   const timeoutId = setTimeout(() => {
     controller.abort();

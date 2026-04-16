@@ -98,10 +98,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!menuText) {
-    return NextResponse.json(
-      { error: "Ruokalista puuttuu" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Ruokalista puuttuu" }, { status: 400 });
   }
 
   const { data: existingRestaurant, error: existingRestaurantError } =
