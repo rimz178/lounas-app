@@ -3,7 +3,13 @@ type Props = {
   lng: number;
   name: string;
 };
-
+/**
+ *
+ * DirectionsButton on yksinkertainen komponentti, joka luo linkin Google Mapsiin reittiohjeiden
+ * saamiseksi tiettyyn sijaintiin. Se ottaa vastaan koordinaatit (lat, lng)
+ * @param param0  - Komponentin propsit, jotka sisältävät lat, lng ja name
+ * @returns   - JSX-elementti, joka on linkki Google Mapsiin reittiohjeiden saamiseksi
+ */
 export default function DirectionsButton({ lat, lng, name }: Props) {
   const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 

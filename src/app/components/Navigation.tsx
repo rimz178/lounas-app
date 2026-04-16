@@ -4,6 +4,10 @@ import Link from "next/link";
 import AuthButton from "./AuthButton";
 import { useAuth } from "./AuthContext";
 import { useProfile } from "../service/useProfile";
+/**
+ * Navigation-komponentti, joka näyttää sovelluksen navigaatiopalkin
+ * @returns JSX-elementti, joka sisältää navigaatiolinkit ja AuthButton-komponentin
+ */
 
 export default function Navigation() {
   const { isLoggedIn } = useAuth();

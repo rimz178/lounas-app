@@ -12,7 +12,12 @@ type Props = {
   onSelect: (restaurantId: string) => void;
   onDelete: () => void;
 };
-
+/**
+ * Tämä komponentti näyttää paneelin, jossa admin käyttäjä voivat poistaa ravintolan.
+ * @param param0  - Komponentin propsit, jotka sisältävät listan ravintoloista, valitun ravintolan ID:n,
+ * poiston tilan ja viestin, sekä funktiot ravintolan valitsemiseen ja poistamiseen
+ * @returns palautta JSX-elementti, joka sisältää lomakkeen ravintolan valitsemiseen ja poistamiseen, sekä tilaviestin
+ */
 export default function DeleteRestaurantPanel({
   restaurants,
   selected,

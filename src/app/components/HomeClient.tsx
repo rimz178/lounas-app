@@ -9,7 +9,12 @@ import {
 import RestaurantMap from "./Map";
 import RestaurantList from "./restaurantList";
 import RestaurantSearchBar from "./RestaurantSearchBar";
-
+/**
+ * HomeClient on pääkomponentti, joka vastaa ravintoloiden näyttämisestä kartalla ja listana
+ * @returns {JSX.Element} JSX-elementti, joka sisältää kartan ja listan ravintoloista,
+ * sekä hakupalkin ravintoloiden suodattamiseen.Käyttää useNearbyRestaurants
+ * hookia ravintoloiden hakemiseen käyttäjän sijainnin perusteella.
+ */
 export default function HomeClient() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     string | undefined

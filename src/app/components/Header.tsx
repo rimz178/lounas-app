@@ -1,3 +1,7 @@
+/**
+ *  Header-komponentti, joka näyttää sovelluksen otsikon ja kuvauksen. Käytetään sovelluksen yläosassa.
+ * @returns {JSX.Element} JSX-elementti, joka sisältää otsikon ja kuvauksen
+ */
 export default function Header() {
   return (
     <header className="w-full bg-neutral-900 py-8 sm:py-16 flex flex-col items-center justify-center">

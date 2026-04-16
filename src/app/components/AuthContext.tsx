@@ -10,6 +10,9 @@ import {
 } from "react";
 import { supabase } from "../service/supabaseClient";
 
+/**
+ * AuthContext tarjoaa tietoa käyttäjän autentikointitilasta ja käyttäjätiedoista koko sovellukselle.
+ */
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;

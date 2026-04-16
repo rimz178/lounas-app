@@ -22,7 +22,11 @@ type Props = {
   onMenuChange: (value: string) => void;
   onSave: () => void;
 };
-
+/**
+ *  Tämä komponentti näyttää lomakkeen, jolla admin-käyttäjät voivat muokata ravintoloiden ruokalistoja.      
+ * @param param0  - Komponentin propsit, jotka sisältävät listan ravintoloista, valitun ravintolan ID:n, ruokalistan tekstin,
+ * @returns   - JSX-elementti, joka sisältää lomakkeen ravintolan valitsemiseen ja ruokalistan muokkaamiseen, sekä tallennuspainikkeen ja tilaviestit
+ */
 export default function MenuEditor({
   restaurants,
   selected,
