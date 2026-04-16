@@ -4,14 +4,16 @@ import dynamic from "next/dynamic";
 import type { Restaurant } from "../service/types";
 
 /**
- * RestaurantMap renders a section containing a map of restaurants.
+ * RestaraunMap Komponentti, joka näyttää ravintolat kartalla. Käyttää dynaamista importtia
+ * Leaflet-kartta-komponentille, jotta kartta latautuu vain client-side renderingissä.
+ * Näyttää myös käyttäjän sijainnin, jos se on saatavilla.
  *
- * @param {Props} props - The props for the component
- * @param {string} [props.selectedRestaurantId] - The ID of the currently selected restaurant (optional)
- * @param {(id: string) => void} [props.onSelectRestaurantId] - Callback when a restaurant is selected (optional)
- * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - List of restaurants to display on the map
- * @param {{lat: number, lng: number}=} props.userLocation - User's location (optional)
- * @returns {JSX.Element} The rendered map section
+ * @param {Props} props - Komponentin propsit
+ * @param {string} [props.selectedRestaurantId] - Tämä ravintola on valittuna kartalla (vapaehtoinen)
+ * @param {(id: string) => void} [props.onSelectRestaurantId] - Funktio, joka kutsutaan, kun ravintola valitaan kartalla (vapaaehtoinen)
+ * @param {Array<{id: string, name: string, lat: number, lng: number, url: string}>} props.restaurants - Lista ravintoloista, jotka näytetään kartalla
+ * @param {{lat: number, lng: number}=} props.userLocation - Käyttäjän sijainti, joka näytetään kartalla (vapaaehtoinen)
+ * @returns {JSX.Element} Palauttaa JSX-elementin, joka sisältää kartan ja siihen liittyvät elementit
  */
 
 type Props = {

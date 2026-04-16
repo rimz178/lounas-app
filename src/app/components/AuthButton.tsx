@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../service/supabaseClient";
 import { useAuth } from "./AuthContext";
 
+/**
+ * Näyttää kirjautumis- tai uloskirjautumispainikkeen riippuen käyttäjän kirjautumistilasta
+ * @returns {JSX.Element} JSX-elementti, joka sisältää kirjautumis- tai uloskirjautumispainikkeen
+ */
+
 export default function AuthButton() {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
