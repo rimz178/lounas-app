@@ -8,7 +8,7 @@ type Profile = {
 };
 /**
  *  Hakee ja palauttaa kirjautuneen käyttäjän profiilitiedot Supabasesta.
- * 
+ *
  */
 export function useProfile() {
   const { user } = useAuth();

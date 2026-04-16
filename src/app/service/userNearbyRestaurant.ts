@@ -69,7 +69,8 @@ export function useNearbyRestaurants(options: NearbyRestaurantsOptions = {}) {
     manualArea: providedManualArea,
     radiusKm = DEFAULT_RADIUS_KM,
   } = options;
-  const manualArea = providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
+  const manualArea =
+    providedManualArea ?? (useLocation ? "helsinki" : "kaikki");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [userLocation, setUserLocation] = useState<{
     lat: number;

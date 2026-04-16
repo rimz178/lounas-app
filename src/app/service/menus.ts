@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 /**
-  * Tämä tiedosto sisältää funktioita, jotka liittyvät ravintoloiden ruokalistojen hallintaan.
+ * Tämä tiedosto sisältää funktioita, jotka liittyvät ravintoloiden ruokalistojen hallintaan.
  */
 
 export async function insertMenu(
