@@ -10,10 +10,12 @@ import {
 export default async function MenuPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ rid?: string }>;
+  searchParams?: Promise<{ rid?: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const selectedRestaurantId = params?.rid?.trim() || undefined;
+  const rid = params?.rid;
+  const normalizedRid = Array.isArray(rid) ? rid[0] : rid;
+  const selectedRestaurantId = normalizedRid?.trim() || undefined;
 
   const restaurants = await getRestaurants();
   const sortedRestaurants = [...restaurants].sort((a, b) =>
