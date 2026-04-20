@@ -26,11 +26,14 @@ interface RestaurantWithReviews extends Restaurant {
  * @param param0  - Komponentin propsit, jotka sisältävät listan ravintoloista, joille näytetään arvostelutiedot ja arvostelulomakkeet
  * @returns  JSX-elementti, joka sisältää kortit ravintoloista, joissa on niiden arvostelutiedot ja mahdollisuus jättää tai muokata oma arvostelu.
  */
+const PAGE_SIZE = 10;
+
 export default function RestaurantList({
   restaurants,
 }: {
   restaurants: Restaurant[];
 }) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [restaurantsWithReviews, setRestaurantsWithReviews] = useState<
     RestaurantWithReviews[]
   >([]);
@@ -78,6 +81,12 @@ export default function RestaurantList({
 
     fetchReviews();
   }, [restaurants, isLoggedIn, user]);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [restaurants]);
+
+  const visibleRestaurants = restaurantsWithReviews.slice(0, visibleCount);
 
   const handleEdit = async (restaurantId: string) => {
     setActiveId(restaurantId);
@@ -149,8 +158,9 @@ export default function RestaurantList({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 sm:pt-8">
-      {restaurantsWithReviews.map((restaurant) => (
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 pt-4 sm:pt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {visibleRestaurants.map((restaurant) => (
         <div
           key={restaurant.id}
           className="bg-white rounded-[2.5rem] shadow-lg border border-gray-200 p-4 sm:p-6 lg:p-8 flex flex-col justify-between min-h-[180px]"
@@ -244,6 +254,18 @@ export default function RestaurantList({
           )}
         </div>
       ))}
+      </div>
+      {visibleCount < restaurantsWithReviews.length && (
+        <div className="flex justify-center mt-6 mb-4">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+            className="px-6 py-2 rounded-full bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 transition-colors"
+          >
+            Lataa lisää ({restaurantsWithReviews.length - visibleCount} jäljellä)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
