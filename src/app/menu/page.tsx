@@ -7,7 +7,16 @@ import {
  *  Näyttä menu-sivu, joka hakee ravintolat ja niiden ruokalistat palvelimelta ja näyttää ne MenuRestaurantCards-komponentissa.
  * @returns  JSX-elementti, joka sisältää MenuRestaurantCards-komponentin, joka näyttää ravintolat kortteina, joissa on niiden ruokalistat.
  */
-export default async function MenuPage() {
+export default async function MenuPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ rid?: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const rid = params?.rid;
+  const normalizedRid = Array.isArray(rid) ? rid[0] : rid;
+  const selectedRestaurantId = normalizedRid?.trim() || undefined;
+
   const restaurants = await getRestaurants();
   const sortedRestaurants = [...restaurants].sort((a, b) =>
     a.name.localeCompare(b.name, "fi"),
@@ -36,7 +45,10 @@ export default async function MenuPage() {
           Jokaisen ravintolan lounaslista omassa kortissaan.
         </p>
 
-        <MenuRestaurantCards restaurants={restaurantMenus} />
+        <MenuRestaurantCards
+          restaurants={restaurantMenus}
+          selectedRestaurantId={selectedRestaurantId}
+        />
       </div>
     </main>
   );

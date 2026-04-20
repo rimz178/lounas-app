@@ -81,8 +81,10 @@ function parseMenuSections(menuText: string): MenuSection[] {
 
 export default function MenuRestaurantCards({
   restaurants,
+  selectedRestaurantId,
 }: {
   restaurants: RestaurantMenu[];
+  selectedRestaurantId?: string;
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -163,6 +165,18 @@ export default function MenuRestaurantCards({
     );
   }, [areaFilteredRestaurants, query]);
 
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+
+    const selectedRestaurant = restaurants.find(
+      (restaurant) => restaurant.id === selectedRestaurantId,
+    );
+    if (!selectedRestaurant) return;
+
+    setQuery(selectedRestaurant.name);
+    setPage(0);
+  }, [selectedRestaurantId, restaurants]);
+
   const totalPages = Math.ceil(filteredRestaurants.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(0, totalPages - 1));
   const paginatedRestaurants = filteredRestaurants.slice(
@@ -203,7 +217,11 @@ export default function MenuRestaurantCards({
           return (
             <article
               key={restaurant.id}
-              className="flex h-[420px] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-md"
+              className={`flex h-[420px] flex-col overflow-hidden rounded-3xl border bg-white p-5 shadow-md ${
+                restaurant.id === selectedRestaurantId
+                  ? "border-blue-400 ring-2 ring-blue-200"
+                  : "border-gray-200"
+              }`}
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <h2 className="text-xl font-semibold text-gray-900">

@@ -3,6 +3,7 @@
 import L, { type LatLngExpression } from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import DirectionsButton from "./DirectionsButton";
 import type { Restaurant } from "../service/types";
 
 /**
@@ -199,14 +200,15 @@ export default function LeafletMap({
                     )}
                   </div>
 
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block text-sm font-medium text-blue-700 hover:underline"
-                  >
-                    Avaa ravintolan sivut
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`/menu?rid=${encodeURIComponent(r.id)}`}
+                      className="inline-block text-sm font-medium text-blue-700 hover:underline"
+                    >
+                      Avaa menu
+                    </a>
+                    <DirectionsButton lat={r.lat} lng={r.lng} name={r.name} />
+                  </div>
                 </div>
               </Popup>
             </Marker>
