@@ -5,7 +5,6 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { type Restaurant, getRestaurants } from "./src/services/restaurants";
@@ -13,12 +12,20 @@ import { type Restaurant, getRestaurants } from "./src/services/restaurants";
 export default function App() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getRestaurants().then((data) => {
-      setRestaurants(data);
-      setLoading(false);
-    });
+    (async () => {
+      try {
+        const data = await getRestaurants();
+        setRestaurants(data);
+      } catch (fetchError) {
+        console.error("Failed to load restaurants", fetchError);
+        setError("Ravintoloiden lataus epaonnistui.");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   return (
@@ -27,15 +34,17 @@ export default function App() {
       <Text style={styles.header}>Lounas</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#171717" />
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
       ) : (
         <FlatList
           data={restaurants}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card}>
+            <View style={styles.card}>
               <Text style={styles.name}>{item.name}</Text>
-            </TouchableOpacity>
+            </View>
           )}
         />
       )}
@@ -75,5 +84,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#171717",
+  },
+  errorText: {
+    color: "#991b1b",
+    fontSize: 14,
+    paddingHorizontal: 20,
   },
 });

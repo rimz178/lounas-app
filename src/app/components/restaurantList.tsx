@@ -46,8 +46,6 @@ export default function RestaurantList({
   const [userReviews, setUserReviews] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-
     const checkAuth = async () => {
       if (isLoggedIn && user) {
         const reviews: Record<string, boolean> = {};
@@ -83,6 +81,11 @@ export default function RestaurantList({
 
     fetchReviews();
   }, [restaurants, isLoggedIn, user]);
+
+  useEffect(() => {
+    const _restaurantCount = restaurants.length;
+    setVisibleCount(PAGE_SIZE);
+  }, [restaurants]);
 
   const visibleRestaurants = restaurantsWithReviews.slice(0, visibleCount);
 
