@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import ListScreen from "../screens/ListScreen";
 import { Text, View } from "react-native";
-
-function ListScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text>Lista</Text>
-    </View>
-  );
-}
 
 function MapScreen() {
   return (
