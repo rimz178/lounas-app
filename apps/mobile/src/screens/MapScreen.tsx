@@ -1,7 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { type Restaurant, getRestaurants } from "../services/restaurants";
+import {
+  type Restaurant,
+  getMenuForRestaurant,
+  getRestaurants,
+} from "../services/restaurants";
+import type { RootStackParamList } from "../navigation/types";
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
 
@@ -20,10 +35,41 @@ function isValidLongitude(value: number | null): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function extractDailyHighlight(menuText: string | null): string {
+  if (!menuText) return "Ei lounastietoja saatavilla.";
+
+  const lines = menuText
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^[-*•]\s*/, "")
+        .replace(/^\d+[.)]\s*/, ""),
+    )
+    .filter(Boolean);
+
+  const headingPattern =
+    /^(maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|ma|ti|ke|to|pe|la|su|ma-pe|ma\s*-\s*pe|today|tanaan|tänään)\b/i;
+
+  const firstItem = lines.find((line) => !headingPattern.test(line));
+  if (!firstItem) return "Ei lounastietoja saatavilla.";
+
+  return firstItem;
+}
+
 export default function MapScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<CoordinateRestaurant | null>(null);
+  const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [menuCache, setMenuCache] = useState<Record<string, string | null>>({});
+  const menuRequestIdRef = useRef(0);
+  const selectedRestaurantIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -58,6 +104,78 @@ export default function MapScreen() {
         }
       : HELSINKI_REGION;
 
+  async function handleSelectRestaurant(restaurant: CoordinateRestaurant) {
+    selectedRestaurantIdRef.current = restaurant.id;
+    setSelectedRestaurant(restaurant);
+    setSelectedMenu(null);
+
+    const cachedMenu = menuCache[restaurant.id];
+    if (cachedMenu !== undefined) {
+      setMenuLoading(false);
+      setSelectedMenu(cachedMenu);
+      return;
+    }
+
+    const requestId = menuRequestIdRef.current + 1;
+    menuRequestIdRef.current = requestId;
+
+    setMenuLoading(true);
+    try {
+      const menuText = await getMenuForRestaurant(restaurant.id);
+
+      if (
+        requestId !== menuRequestIdRef.current ||
+        selectedRestaurantIdRef.current !== restaurant.id
+      ) {
+        return;
+      }
+
+      setMenuCache((prev) => ({ ...prev, [restaurant.id]: menuText }));
+      setSelectedMenu(menuText);
+    } catch (menuError) {
+      if (
+        requestId !== menuRequestIdRef.current ||
+        selectedRestaurantIdRef.current !== restaurant.id
+      ) {
+        return;
+      }
+
+      console.error("Failed to load restaurant menu", menuError);
+      setSelectedMenu(null);
+    } finally {
+      if (
+        requestId === menuRequestIdRef.current &&
+        selectedRestaurantIdRef.current === restaurant.id
+      ) {
+        setMenuLoading(false);
+      }
+    }
+  }
+
+  async function openUrl(url: string) {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) return;
+      await Linking.openURL(url);
+    } catch (openUrlError) {
+      console.error("Failed to open URL", openUrlError);
+    }
+  }
+
+  function openDirections(restaurant: CoordinateRestaurant) {
+    const destination = `${restaurant.lat},${restaurant.lng}`;
+    const mapsUrl =
+      Platform.OS === "ios"
+        ? `http://maps.apple.com/?daddr=${destination}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+
+    void openUrl(mapsUrl);
+  }
+
+  const selectedCachedMenu = selectedRestaurant
+    ? menuCache[selectedRestaurant.id]
+    : undefined;
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -74,10 +192,78 @@ export default function MapScreen() {
                 longitude: restaurant.lng,
               }}
               title={restaurant.name}
+              onPress={() => {
+                void handleSelectRestaurant(restaurant);
+              }}
             />
           ))}
         </MapView>
       )}
+      {selectedRestaurant && !loading && !error ? (
+        <View style={styles.detailCard}>
+          <View style={styles.detailHeaderRow}>
+            <Text style={styles.detailTitle}>{selectedRestaurant.name}</Text>
+            <Pressable
+              onPress={() => {
+                selectedRestaurantIdRef.current = null;
+                menuRequestIdRef.current += 1;
+                setSelectedRestaurant(null);
+                setSelectedMenu(null);
+                setMenuLoading(false);
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.closeText}>Sulje</Text>
+            </Pressable>
+          </View>
+
+          {menuLoading ? (
+            <ActivityIndicator size="small" color="#171717" />
+          ) : (
+            <>
+              <Text style={styles.highlightLabel}>Päivän nosto</Text>
+              <Text style={styles.highlightText} numberOfLines={3}>
+                {extractDailyHighlight(selectedMenu)}
+              </Text>
+              <Text style={styles.menuText} numberOfLines={4}>
+                {selectedMenu?.trim() || "Ei lounastietoja saatavilla."}
+              </Text>
+            </>
+          )}
+
+          <View style={styles.actionRow}>
+            <Pressable
+              disabled={menuLoading}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && !menuLoading && styles.pressedButton,
+                menuLoading && styles.disabledButton,
+              ]}
+              onPress={() => {
+                navigation.navigate("Menu", {
+                  restaurantId: selectedRestaurant.id,
+                  restaurantName: selectedRestaurant.name,
+                  ...(selectedCachedMenu !== undefined
+                    ? { initialMenu: selectedCachedMenu }
+                    : {}),
+                });
+              }}
+            >
+              <Text style={styles.actionButtonText}>Avaa menu</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.pressedButton,
+              ]}
+              onPress={() => openDirections(selectedRestaurant)}
+            >
+              <Text style={styles.actionButtonText}>Reitti</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -89,6 +275,82 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  detailCard: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  detailHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  detailTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#171717",
+    paddingRight: 8,
+  },
+  closeText: {
+    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  highlightLabel: {
+    color: "#6b7280",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  highlightText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  menuText: {
+    color: "#374151",
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: "#171717",
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionButtonText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pressedButton: {
+    opacity: 0.85,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   errorText: {
     color: "#991b1b",
