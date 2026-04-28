@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ActivityIndicator,
   Linking,
@@ -17,6 +19,15 @@ import {
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
 
+type RootStackParamList = {
+  Tabs: undefined;
+  Menu: {
+    restaurantId: string;
+    restaurantName: string;
+    initialMenu?: string | null;
+  };
+};
+
 const HELSINKI_REGION = {
   latitude: 60.1699,
   longitude: 24.9384,
@@ -32,7 +43,31 @@ function isValidLongitude(value: number | null): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function extractDailyHighlight(menuText: string | null): string {
+  if (!menuText) return "Ei lounastietoja saatavilla.";
+
+  const lines = menuText
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^[-*•]\s*/, "")
+        .replace(/^\d+[.)]\s*/, ""),
+    )
+    .filter(Boolean);
+
+  const headingPattern =
+    /^(maanantai|tiistai|keskiviikko|torstai|perjantai|lauantai|sunnuntai|ma|ti|ke|to|pe|la|su|ma-pe|ma\s*-\s*pe|today|tanaan|tänään)\b/i;
+
+  const firstItem = lines.find((line) => !headingPattern.test(line));
+  if (!firstItem) return "Ei lounastietoja saatavilla.";
+
+  return firstItem;
+}
+
 export default function MapScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,23 +188,30 @@ export default function MapScreen() {
           {menuLoading ? (
             <ActivityIndicator size="small" color="#171717" />
           ) : (
-            <Text style={styles.menuText} numberOfLines={5}>
-              {selectedMenu?.trim() || "Ei lounastietoja saatavilla."}
-            </Text>
+            <>
+              <Text style={styles.highlightLabel}>Päivän nosto</Text>
+              <Text style={styles.highlightText} numberOfLines={3}>
+                {extractDailyHighlight(selectedMenu)}
+              </Text>
+              <Text style={styles.menuText} numberOfLines={4}>
+                {selectedMenu?.trim() || "Ei lounastietoja saatavilla."}
+              </Text>
+            </>
           )}
 
           <View style={styles.actionRow}>
             <Pressable
               style={({ pressed }) => [
                 styles.actionButton,
-                !selectedRestaurant.url && styles.disabledButton,
                 pressed && styles.pressedButton,
               ]}
               onPress={() => {
-                if (!selectedRestaurant.url) return;
-                void openUrl(selectedRestaurant.url);
+                navigation.navigate("Menu", {
+                  restaurantId: selectedRestaurant.id,
+                  restaurantName: selectedRestaurant.name,
+                  initialMenu: selectedMenu,
+                });
               }}
-              disabled={!selectedRestaurant.url}
             >
               <Text style={styles.actionButtonText}>Avaa menu</Text>
             </Pressable>
@@ -230,10 +272,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+  highlightLabel: {
+    color: "#6b7280",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  highlightText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
   menuText: {
     color: "#374151",
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 18,
     marginBottom: 12,
   },
   actionRow: {
@@ -255,9 +312,6 @@ const styles = StyleSheet.create({
   },
   pressedButton: {
     opacity: 0.85,
-  },
-  disabledButton: {
-    opacity: 0.45,
   },
   errorText: {
     color: "#991b1b",
