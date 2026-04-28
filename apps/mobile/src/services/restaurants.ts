@@ -14,8 +14,7 @@ export async function getRestaurants(): Promise<Restaurant[]> {
     .select('id, name, lat, lng, url');
 
   if (error) {
-    console.error('Virhe haettaessa ravintoloita:', error.message);
-    return [];
+    throw new Error(`Virhe haettaessa ravintoloita: ${error.message}`);
   }
 
   return data ?? [];
