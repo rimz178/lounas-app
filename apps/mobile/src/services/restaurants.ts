@@ -30,8 +30,7 @@ export async function getMenuForRestaurant(restaurantId: string): Promise<string
     .maybeSingle();
 
   if (error) {
-    console.error('Virhe haettaessa menua:', error.message);
-    return null;
+    throw new Error(`Virhe haettaessa menua: ${error.message}`);
   }
 
   return data?.menu_text ?? null;

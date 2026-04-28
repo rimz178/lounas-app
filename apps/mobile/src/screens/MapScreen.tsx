@@ -16,17 +16,9 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
+import type { RootStackParamList } from "../navigation/types";
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
-
-type RootStackParamList = {
-  Tabs: undefined;
-  Menu: {
-    restaurantId: string;
-    restaurantName: string;
-    initialMenu?: string | null;
-  };
-};
 
 const HELSINKI_REGION = {
   latitude: 60.1699,

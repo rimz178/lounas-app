@@ -6,39 +6,37 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, type RouteProp } from "@react-navigation/native";
 import { getMenuForRestaurant } from "../services/restaurants";
-
-type RouteParams = {
-  restaurantId: string;
-  restaurantName: string;
-  initialMenu?: string | null;
-};
+import type { RootStackParamList } from "../navigation/types";
 
 export default function MenuScreen() {
-  const route = useRoute();
-  const { restaurantId, restaurantName, initialMenu } =
-    route.params as RouteParams;
+  const route = useRoute<RouteProp<RootStackParamList, "Menu">>();
+  const { restaurantId, restaurantName, initialMenu } = route.params;
+
+  const hasInitialMenuParam = initialMenu !== undefined;
 
   const [menuText, setMenuText] = useState<string | null>(initialMenu ?? null);
-  const [loading, setLoading] = useState(!initialMenu);
+  const [loading, setLoading] = useState(!hasInitialMenuParam);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialMenu) return;
+    if (hasInitialMenuParam) return;
 
     (async () => {
       try {
         const menu = await getMenuForRestaurant(restaurantId);
         setMenuText(menu);
+        setError(null);
       } catch (fetchError) {
         console.error("Failed to load menu", fetchError);
+        setMenuText(null);
         setError("Menun lataus epäonnistui.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [initialMenu, restaurantId]);
+  }, [hasInitialMenuParam, restaurantId]);
 
   const lines = useMemo(() => {
     if (!menuText) return [];

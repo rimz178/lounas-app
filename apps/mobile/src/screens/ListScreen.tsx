@@ -14,15 +14,7 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
-
-type RootStackParamList = {
-  Tabs: undefined;
-  Menu: {
-    restaurantId: string;
-    restaurantName: string;
-    initialMenu?: string | null;
-  };
-};
+import type { RootStackParamList } from "../navigation/types";
 
 export default function ListScreen() {
   const navigation =
