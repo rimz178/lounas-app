@@ -1,15 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import ListScreen from "../screens/ListScreen";
+import MapScreen from "../screens/MapScreen";
 import { Text, View } from "react-native";
-
-function MapScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text>Kartta</Text>
-    </View>
-  );
-}
 
 function ProfileScreen() {
   return (
