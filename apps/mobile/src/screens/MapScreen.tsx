@@ -12,7 +12,11 @@ const HELSINKI_REGION = {
   longitudeDelta: 0.12,
 };
 
-function isValidCoordinate(value: unknown): value is number {
+function isValidLatitude(value: number | null): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isValidLongitude(value: number | null): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
@@ -39,8 +43,7 @@ export default function MapScreen() {
     () =>
       restaurants.filter(
         (restaurant): restaurant is CoordinateRestaurant =>
-          isValidCoordinate(restaurant.lat) &&
-          isValidCoordinate(restaurant.lng),
+          isValidLatitude(restaurant.lat) && isValidLongitude(restaurant.lng),
       ),
     [restaurants],
   );

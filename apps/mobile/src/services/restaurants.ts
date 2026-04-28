@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 export interface Restaurant {
   id: string;
   name: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   url: string | null;
 }
 
