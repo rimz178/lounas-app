@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -68,6 +68,8 @@ export default function MapScreen() {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(false);
   const [menuCache, setMenuCache] = useState<Record<string, string | null>>({});
+  const menuRequestIdRef = useRef(0);
+  const selectedRestaurantIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -103,30 +105,61 @@ export default function MapScreen() {
       : HELSINKI_REGION;
 
   async function handleSelectRestaurant(restaurant: CoordinateRestaurant) {
+    selectedRestaurantIdRef.current = restaurant.id;
     setSelectedRestaurant(restaurant);
+    setSelectedMenu(null);
 
-    if (menuCache[restaurant.id] !== undefined) {
-      setSelectedMenu(menuCache[restaurant.id]);
+    const cachedMenu = menuCache[restaurant.id];
+    if (cachedMenu !== undefined) {
+      setMenuLoading(false);
+      setSelectedMenu(cachedMenu);
       return;
     }
+
+    const requestId = menuRequestIdRef.current + 1;
+    menuRequestIdRef.current = requestId;
 
     setMenuLoading(true);
     try {
       const menuText = await getMenuForRestaurant(restaurant.id);
+
+      if (
+        requestId !== menuRequestIdRef.current ||
+        selectedRestaurantIdRef.current !== restaurant.id
+      ) {
+        return;
+      }
+
       setMenuCache((prev) => ({ ...prev, [restaurant.id]: menuText }));
       setSelectedMenu(menuText);
     } catch (menuError) {
+      if (
+        requestId !== menuRequestIdRef.current ||
+        selectedRestaurantIdRef.current !== restaurant.id
+      ) {
+        return;
+      }
+
       console.error("Failed to load restaurant menu", menuError);
       setSelectedMenu(null);
     } finally {
-      setMenuLoading(false);
+      if (
+        requestId === menuRequestIdRef.current &&
+        selectedRestaurantIdRef.current === restaurant.id
+      ) {
+        setMenuLoading(false);
+      }
     }
   }
 
   async function openUrl(url: string) {
-    const canOpen = await Linking.canOpenURL(url);
-    if (!canOpen) return;
-    await Linking.openURL(url);
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) return;
+      await Linking.openURL(url);
+    } catch (openUrlError) {
+      console.error("Failed to open URL", openUrlError);
+    }
   }
 
   function openDirections(restaurant: CoordinateRestaurant) {
@@ -138,6 +171,10 @@ export default function MapScreen() {
 
     void openUrl(mapsUrl);
   }
+
+  const selectedCachedMenu = selectedRestaurant
+    ? menuCache[selectedRestaurant.id]
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -168,8 +205,11 @@ export default function MapScreen() {
             <Text style={styles.detailTitle}>{selectedRestaurant.name}</Text>
             <Pressable
               onPress={() => {
+                selectedRestaurantIdRef.current = null;
+                menuRequestIdRef.current += 1;
                 setSelectedRestaurant(null);
                 setSelectedMenu(null);
+                setMenuLoading(false);
               }}
               hitSlop={8}
             >
@@ -193,15 +233,19 @@ export default function MapScreen() {
 
           <View style={styles.actionRow}>
             <Pressable
+              disabled={menuLoading}
               style={({ pressed }) => [
                 styles.actionButton,
-                pressed && styles.pressedButton,
+                pressed && !menuLoading && styles.pressedButton,
+                menuLoading && styles.disabledButton,
               ]}
               onPress={() => {
                 navigation.navigate("Menu", {
                   restaurantId: selectedRestaurant.id,
                   restaurantName: selectedRestaurant.name,
-                  initialMenu: selectedMenu,
+                  ...(selectedCachedMenu !== undefined
+                    ? { initialMenu: selectedCachedMenu }
+                    : {}),
                 });
               }}
             >
@@ -304,6 +348,9 @@ const styles = StyleSheet.create({
   },
   pressedButton: {
     opacity: 0.85,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   errorText: {
     color: "#991b1b",
