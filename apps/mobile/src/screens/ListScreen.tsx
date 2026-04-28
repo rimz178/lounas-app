@@ -20,7 +20,7 @@ export default function ListScreen() {
         setRestaurants(data);
       } catch (fetchError) {
         console.error("Failed to load restaurants", fetchError);
-        setError("Ravintoloiden lataus epaonnistui.");
+        setError("Ravintoloiden lataus epäonnistui.");
       } finally {
         setLoading(false);
       }
