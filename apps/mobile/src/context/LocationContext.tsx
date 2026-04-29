@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
@@ -21,7 +22,7 @@ type LocationContextValue = {
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 
-export function LocationProvider({ children }: { children: React.ReactNode }) {
+export function LocationProvider({ children }: { children: ReactNode }) {
   const [locationState, setLocationState] = useState<LocationState>({
     status: "loading",
   });
