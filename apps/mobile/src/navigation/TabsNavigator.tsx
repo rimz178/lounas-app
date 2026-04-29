@@ -33,7 +33,11 @@ export default function TabsNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Lista" component={ListScreen} />
+      <Tab.Screen
+        name="Lista"
+        component={ListScreen}
+        options={{ unmountOnBlur: true }}
+      />
       <Tab.Screen name="Kartta" component={MapScreen} />
       <Tab.Screen name="Profiili" component={ProfileScreen} />
     </Tab.Navigator>
