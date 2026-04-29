@@ -132,6 +132,24 @@ export default function MapScreen() {
   }, [filteredRestaurants, selectedRestaurant]);
 
   useEffect(() => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery || !mapRef.current) return;
+
+    const firstMatch = filteredRestaurants[0];
+    if (!firstMatch) return;
+
+    mapRef.current.animateToRegion(
+      {
+        latitude: firstMatch.lat,
+        longitude: firstMatch.lng,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
+      },
+      450,
+    );
+  }, [query, filteredRestaurants]);
+
+  useEffect(() => {
     if (
       pendingCenterOnUserRef.current &&
       locationState.status === "granted" &&
@@ -266,6 +284,7 @@ export default function MapScreen() {
           style={styles.map}
           initialRegion={initialRegion}
           showsUserLocation={locationState.status === "granted"}
+          showsMyLocationButton={false}
         >
           {filteredRestaurants.map((restaurant) => (
             <Marker
