@@ -22,9 +22,11 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
-import type { RootStackParamList, TopTabParamList } from "../navigation/types";
+import type {
+  RootStackParamList,
+  BottomTabParamList,
+} from "../navigation/types";
 import { useLocation } from "../context/LocationContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
 
@@ -70,8 +72,7 @@ function extractDailyHighlight(menuText: string | null): string {
 export default function MapScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<TopTabParamList, "Kartta">>();
-  const insets = useSafeAreaInsets();
+  const route = useRoute<RouteProp<BottomTabParamList, "Kartta">>();
   const { locationState, requestLocation } = useLocation();
   const mapRef = useRef<MapView | null>(null);
   const searchInputRef = useRef<TextInput | null>(null);
@@ -343,7 +344,7 @@ export default function MapScreen() {
           style={[
             styles.mapTopControls,
             {
-              top: insets.top + (Platform.OS === "android" ? 14 : 8),
+              top: Platform.OS === "android" ? 14 : 8,
             },
           ]}
         >

@@ -15,7 +15,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   type Restaurant,
   type ManualArea,
@@ -24,13 +23,16 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
-import type { RootStackParamList, TopTabParamList } from "../navigation/types";
+import type {
+  RootStackParamList,
+  BottomTabParamList,
+} from "../navigation/types";
 import { useLocation } from "../context/LocationContext";
 
 export default function ListScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<TopTabParamList, "Lista">>();
+  const route = useRoute<RouteProp<BottomTabParamList, "Lounaspaikat">>();
   const listRef = useRef<FlatList<Restaurant>>(null);
   const searchInputRef = useRef<TextInput | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -218,7 +220,7 @@ export default function ListScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container}>
       <FlatList
         ref={listRef}
         style={styles.listView}
@@ -270,7 +272,7 @@ export default function ListScreen() {
           </View>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

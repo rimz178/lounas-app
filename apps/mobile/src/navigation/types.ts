@@ -11,3 +11,8 @@ export type TopTabParamList = {
   Lista: { openSearchAt?: number } | undefined;
   Kartta: { openSearchAt?: number } | undefined;
 };
+
+export type BottomTabParamList = {
+  Kartta: { openSearchAt?: number } | undefined;
+  Lounaspaikat: { openSearchAt?: number } | undefined;
+};
