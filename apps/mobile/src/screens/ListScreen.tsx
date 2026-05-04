@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ActivityIndicator,
@@ -20,18 +24,21 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
-import type { RootStackParamList } from "../navigation/types";
+import type { RootStackParamList, TopTabParamList } from "../navigation/types";
 import { useLocation } from "../context/LocationContext";
 
 export default function ListScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<TopTabParamList, "Lista">>();
   const listRef = useRef<FlatList<Restaurant>>(null);
+  const searchInputRef = useRef<TextInput | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuCache, setMenuCache] = useState<Record<string, string | null>>({});
   const [query, setQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [area, setArea] = useState<ManualArea>("kaikki");
   const { locationState, requestLocation } = useLocation();
 
@@ -144,19 +151,42 @@ export default function ListScreen() {
     }
   }, [loading, resetListToTop]);
 
+  useEffect(() => {
+    if (!route.params?.openSearchAt) {
+      return;
+    }
+
+    setIsSearchOpen((prev) => !prev);
+  }, [route.params?.openSearchAt]);
+
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setQuery("");
+      return;
+    }
+
+    resetListToTop();
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  }, [isSearchOpen, resetListToTop]);
+
   const listHeader = (
     <>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Hae ravintolaa..."
-          placeholderTextColor="#9ca3af"
-          value={query}
-          onChangeText={handleQueryChange}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
-      </View>
+      {isSearchOpen ? (
+        <View style={styles.searchRow}>
+          <TextInput
+            ref={searchInputRef}
+            style={styles.searchInput}
+            placeholder="Hae ravintolaa..."
+            placeholderTextColor="#9ca3af"
+            value={query}
+            onChangeText={handleQueryChange}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
+      ) : null}
 
       <ScrollView
         horizontal
