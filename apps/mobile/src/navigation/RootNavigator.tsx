@@ -16,7 +16,7 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Menu"
         component={MenuScreen}
-        options={{ title: "Menu" }}
+        options={{ title: "Menu", headerBackTitle: "Takaisin" }}
       />
     </Stack.Navigator>
   );

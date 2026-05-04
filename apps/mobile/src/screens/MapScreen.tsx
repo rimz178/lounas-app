@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ActivityIndicator,
@@ -18,9 +22,11 @@ import {
   getMenuForRestaurant,
   getRestaurants,
 } from "../services/restaurants";
-import type { RootStackParamList } from "../navigation/types";
+import type {
+  RootStackParamList,
+  BottomTabParamList,
+} from "../navigation/types";
 import { useLocation } from "../context/LocationContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
 
@@ -66,9 +72,10 @@ function extractDailyHighlight(menuText: string | null): string {
 export default function MapScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
+  const route = useRoute<RouteProp<BottomTabParamList, "Kartta">>();
   const { locationState, requestLocation } = useLocation();
   const mapRef = useRef<MapView | null>(null);
+  const searchInputRef = useRef<TextInput | null>(null);
   const pendingCenterOnUserRef = useRef(false);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +178,25 @@ export default function MapScreen() {
       pendingCenterOnUserRef.current = false;
     }
   }, [locationState]);
+
+  useEffect(() => {
+    if (!route.params?.openSearchAt) {
+      return;
+    }
+
+    setIsSearchOpen((prev) => !prev);
+  }, [route.params?.openSearchAt]);
+
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setQuery("");
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  }, [isSearchOpen]);
 
   const initialRegion =
     restaurantsWithCoordinates.length > 0
@@ -318,32 +344,11 @@ export default function MapScreen() {
           style={[
             styles.mapTopControls,
             {
-              top: insets.top + (Platform.OS === "android" ? 14 : 8),
+              top: Platform.OS === "android" ? 14 : 8,
             },
           ]}
         >
           <View style={styles.topButtonsRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.topButton,
-                isSearchOpen && styles.topButtonActive,
-                pressed && styles.pressedButton,
-              ]}
-              onPress={() => {
-                setIsSearchOpen((prev) => !prev);
-                if (isSearchOpen) setQuery("");
-              }}
-            >
-              <Text
-                style={[
-                  styles.topButtonText,
-                  isSearchOpen && styles.topButtonTextActive,
-                ]}
-              >
-                Haku
-              </Text>
-            </Pressable>
-
             <Pressable
               style={({ pressed }) => [
                 styles.topButton,
@@ -357,6 +362,7 @@ export default function MapScreen() {
 
           {isSearchOpen ? (
             <TextInput
+              ref={searchInputRef}
               style={styles.mapSearchInput}
               placeholder="Hae kartalta..."
               placeholderTextColor="#9ca3af"

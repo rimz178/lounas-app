@@ -6,3 +6,8 @@ export type RootStackParamList = {
     initialMenu?: string | null;
   };
 };
+
+export type BottomTabParamList = {
+  Kartta: { openSearchAt?: number } | undefined;
+  Lounaspaikat: { openSearchAt?: number } | undefined;
+};
