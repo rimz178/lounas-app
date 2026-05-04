@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import type { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { useRef, useState } from "react";
 import {
   Animated,
@@ -25,14 +26,7 @@ const TAB_ITEMS: {
   { label: "Lounaspaikat", icon: "list", screen: "Lounaspaikat" },
 ];
 
-type AppBarProps = {
-  navigation: {
-    navigate: (screen: string, params?: object) => void;
-  };
-  route: { name: string };
-};
-
-function AppBar({ navigation, route }: AppBarProps) {
+function AppBar({ navigation, route }: BottomTabHeaderProps) {
   const insets = useSafeAreaInsets();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
