@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRef, useState } from "react";
 import {
   Animated,
@@ -13,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ListScreen from "../screens/ListScreen";
 import MapScreen from "../screens/MapScreen";
-import type { BottomTabParamList } from "./types";
+import type { BottomTabParamList, RootStackParamList } from "./types";
 
 const DRAWER_WIDTH = 240;
 
@@ -62,7 +63,9 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
 
   function navigateToSettings() {
     closeDrawer(() => {
-      navigation.getParent()?.navigate("Settings" as never);
+      const parentNavigation =
+        navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+      parentNavigation?.navigate("Settings");
     });
   }
 

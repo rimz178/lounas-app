@@ -20,6 +20,7 @@ type LocationState =
 type LocationContextValue = {
   locationState: LocationState;
   isLocationEnabled: boolean;
+  isLocationSettingLoaded: boolean;
   setLocationEnabled: (enabled: boolean) => void;
   requestLocation: () => Promise<void>;
 };
@@ -28,19 +29,13 @@ const LocationContext = createContext<LocationContextValue | null>(null);
 const LOCATION_ENABLED_KEY = "location_enabled";
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [isLocationEnabled, setIsLocationEnabled] = useState<boolean | null>(
-    null,
-  );
+  const [isLocationEnabled, setIsLocationEnabled] = useState(true);
+  const [isLocationSettingLoaded, setIsLocationSettingLoaded] = useState(false);
   const [locationState, setLocationState] = useState<LocationState>({
     status: "loading",
   });
 
   const requestLocation = useCallback(async () => {
-    if (isLocationEnabled !== true) {
-      setLocationState({ status: "disabled" });
-      return;
-    }
-
     setLocationState({ status: "loading" });
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -61,7 +56,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     } catch {
       setLocationState({ status: "denied" });
     }
-  }, [isLocationEnabled]);
+  }, []);
 
   const setLocationEnabled = useCallback((enabled: boolean) => {
     setIsLocationEnabled(enabled);
@@ -81,15 +76,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         const storedValue = await AsyncStorage.getItem(LOCATION_ENABLED_KEY);
         if (cancelled) return;
 
-        if (storedValue == null) {
-          setIsLocationEnabled(true);
-          return;
+        if (storedValue != null) {
+          setIsLocationEnabled(storedValue === "true");
         }
-
-        setIsLocationEnabled(storedValue === "true");
       } catch {
+        // Keep default value on read error.
+      } finally {
         if (!cancelled) {
-          setIsLocationEnabled(true);
+          setIsLocationSettingLoaded(true);
         }
       }
     }
@@ -102,7 +96,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (isLocationEnabled == null) {
+    if (!isLocationSettingLoaded) {
       return;
     }
 
@@ -112,13 +106,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     setLocationState({ status: "disabled" });
-  }, [isLocationEnabled, requestLocation]);
+  }, [isLocationEnabled, isLocationSettingLoaded, requestLocation]);
 
   return (
     <LocationContext.Provider
       value={{
         locationState,
-        isLocationEnabled: isLocationEnabled ?? false,
+        isLocationEnabled,
+        isLocationSettingLoaded,
         setLocationEnabled,
         requestLocation,
       }}

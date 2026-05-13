@@ -2,28 +2,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { Switch, StyleSheet, Text, View } from "react-native";
 import { useLocation } from "../context/LocationContext";
 
-export default function SettingsScreens() {
+export default function SettingsScreen() {
   const {
     isLocationEnabled,
+    isLocationSettingLoaded,
     setLocationEnabled,
     requestLocation,
     locationState,
   } = useLocation();
 
   function handleLocationToggle(enabled: boolean) {
+    if (!isLocationSettingLoaded) {
+      return;
+    }
+
     setLocationEnabled(enabled);
     if (enabled) {
       void requestLocation();
     }
   }
 
-  const locationStatusText = isLocationEnabled
-    ? locationState.status === "granted"
-      ? "Sijainti on käytössä"
-      : locationState.status === "loading"
-        ? "Haetaan sijaintia..."
-        : "Sijaintia ei ole sallittu"
-    : "Sijainti pois päältä";
+  const locationStatusText = !isLocationSettingLoaded
+    ? "Ladataan asetuksia..."
+    : isLocationEnabled
+      ? locationState.status === "granted"
+        ? "Sijainti on käytössä"
+        : locationState.status === "loading"
+          ? "Haetaan sijaintia..."
+          : "Sijaintia ei ole sallittu"
+      : "Sijainti pois päältä";
 
   return (
     <View style={styles.container}>
@@ -44,8 +51,9 @@ export default function SettingsScreens() {
             </View>
           </View>
           <Switch
-            value={isLocationEnabled}
+            value={isLocationEnabled && isLocationSettingLoaded}
             onValueChange={handleLocationToggle}
+            disabled={!isLocationSettingLoaded}
             trackColor={{ false: "#d1d5db", true: "#86efac" }}
             thumbColor={isLocationEnabled ? "#15803d" : "#6b7280"}
           />

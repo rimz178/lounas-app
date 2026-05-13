@@ -77,6 +77,7 @@ export default function MapScreen() {
   const {
     locationState,
     isLocationEnabled,
+    isLocationSettingLoaded,
     setLocationEnabled,
     requestLocation,
   } = useLocation();
@@ -283,6 +284,10 @@ export default function MapScreen() {
   }
 
   function centerOnUser() {
+    if (!isLocationSettingLoaded) {
+      return;
+    }
+
     if (!isLocationEnabled) {
       Alert.alert(
         "Sijainti pois päältä",
@@ -300,7 +305,6 @@ export default function MapScreen() {
             onPress: () => {
               setLocationEnabled(true);
               pendingCenterOnUserRef.current = true;
-              void requestLocation();
             },
           },
         ],
