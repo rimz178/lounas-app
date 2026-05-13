@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRef, useState } from "react";
 import {
   Animated,
@@ -13,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ListScreen from "../screens/ListScreen";
 import MapScreen from "../screens/MapScreen";
-import type { BottomTabParamList } from "./types";
+import type { BottomTabParamList, RootStackParamList } from "./types";
 
 const DRAWER_WIDTH = 240;
 
@@ -25,6 +26,11 @@ const TAB_ITEMS: {
   { label: "Kartta", icon: "map", screen: "Kartta" },
   { label: "Lounaspaikat", icon: "list", screen: "Lounaspaikat" },
 ];
+
+const DRAWER_SETTINGS_ITEM = {
+  label: "Asetukset",
+  icon: "settings" as const,
+};
 
 function AppBar({ navigation, route }: BottomTabHeaderProps) {
   const insets = useSafeAreaInsets();
@@ -53,6 +59,14 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
 
   function navigateTo(screen: keyof BottomTabParamList) {
     closeDrawer(() => navigation.navigate(screen));
+  }
+
+  function navigateToSettings() {
+    closeDrawer(() => {
+      const parentNavigation =
+        navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+      parentNavigation?.navigate("Settings");
+    });
   }
 
   return (
@@ -124,6 +138,25 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
                 </Text>
               </Pressable>
             ))}
+
+            <View style={styles.drawerDivider} />
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.drawerItem,
+                pressed && styles.drawerItemPressed,
+              ]}
+              onPress={navigateToSettings}
+            >
+              <Ionicons
+                name={DRAWER_SETTINGS_ITEM.icon}
+                size={20}
+                color="#171717"
+              />
+              <Text style={styles.drawerItemText}>
+                {DRAWER_SETTINGS_ITEM.label}
+              </Text>
+            </Pressable>
           </Animated.View>
         </View>
       </Modal>
@@ -238,5 +271,10 @@ const styles = StyleSheet.create({
   },
   drawerItemTextActive: {
     color: "#fff",
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginVertical: 10,
   },
 });
