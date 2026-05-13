@@ -7,6 +7,7 @@ import {
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Linking,
   Platform,
@@ -73,7 +74,12 @@ export default function MapScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<BottomTabParamList, "Kartta">>();
-  const { locationState, requestLocation } = useLocation();
+  const {
+    locationState,
+    isLocationEnabled,
+    setLocationEnabled,
+    requestLocation,
+  } = useLocation();
   const mapRef = useRef<MapView | null>(null);
   const searchInputRef = useRef<TextInput | null>(null);
   const pendingCenterOnUserRef = useRef(false);
@@ -277,6 +283,31 @@ export default function MapScreen() {
   }
 
   function centerOnUser() {
+    if (!isLocationEnabled) {
+      Alert.alert(
+        "Sijainti pois päältä",
+        "Sinulla on sijainti pois päältä. Laitetaanko päälle?",
+        [
+          {
+            text: "Ei",
+            style: "cancel",
+            onPress: () => {
+              pendingCenterOnUserRef.current = false;
+            },
+          },
+          {
+            text: "Kyllä",
+            onPress: () => {
+              setLocationEnabled(true);
+              pendingCenterOnUserRef.current = true;
+              void requestLocation();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     if (locationState.status === "granted" && mapRef.current) {
       mapRef.current.animateToRegion(
         {

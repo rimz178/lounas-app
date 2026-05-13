@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   Tabs: undefined;
+  Settings: undefined;
   Menu: {
     restaurantId: string;
     restaurantName: string;

@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MenuScreen from "../screens/MenuScreen";
+import SettingsScreens from "../screens/SettingsScreens";
 import type { RootStackParamList } from "./types";
 import TabsNavigator from "./TabsNavigator";
 
@@ -17,6 +18,11 @@ export default function RootNavigator() {
         name="Menu"
         component={MenuScreen}
         options={{ title: "Menu", headerBackTitle: "Takaisin" }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreens}
+        options={{ title: "Asetukset", headerBackTitle: "Takaisin" }}
       />
     </Stack.Navigator>
   );
