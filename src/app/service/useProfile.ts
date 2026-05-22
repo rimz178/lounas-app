@@ -30,6 +30,7 @@ export function useProfile() {
 
     async function loadProfile() {
       setProfileLoading(true);
+      setProfile(null);
 
       try {
         const { data, error } = await supabase
