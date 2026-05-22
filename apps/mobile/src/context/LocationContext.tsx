@@ -31,7 +31,7 @@ const LOCATION_ENABLED_KEY = "location_enabled";
 const LOCATION_ONBOARDING_SHOWN_KEY = "location_onboarding_shown";
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [isLocationEnabled, setIsLocationEnabled] = useState(true);
+  const [isLocationEnabled, setIsLocationEnabled] = useState(false);
   const [isLocationSettingLoaded, setIsLocationSettingLoaded] = useState(false);
   const [shouldShowOnboardingPrompt, setShouldShowOnboardingPrompt] =
     useState(false);
