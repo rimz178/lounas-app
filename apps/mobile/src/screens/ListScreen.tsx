@@ -42,7 +42,7 @@ export default function ListScreen() {
   const [query, setQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [area, setArea] = useState<ManualArea>("kaikki");
-  const { locationState, requestLocation } = useLocation();
+  const { locationState, setLocationEnabled, requestLocation } = useLocation();
 
   const resetListToTop = useCallback(() => {
     requestAnimationFrame(() => {
@@ -210,8 +210,19 @@ export default function ListScreen() {
             </Pressable>
           ),
         )}
-        {locationState.status === "denied" && (
-          <Pressable style={styles.chip} onPress={() => void requestLocation()}>
+        {(locationState.status === "denied" ||
+          locationState.status === "disabled") && (
+          <Pressable
+            style={styles.chip}
+            onPress={() => {
+              if (locationState.status === "disabled") {
+                setLocationEnabled(true);
+                return;
+              }
+
+              void requestLocation();
+            }}
+          >
             <Text style={styles.chipText}>Salli sijainti</Text>
           </Pressable>
         )}

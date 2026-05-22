@@ -7,7 +7,6 @@ export default function SettingsScreen() {
     isLocationEnabled,
     isLocationSettingLoaded,
     setLocationEnabled,
-    requestLocation,
     locationState,
   } = useLocation();
 
@@ -17,9 +16,6 @@ export default function SettingsScreen() {
     }
 
     setLocationEnabled(enabled);
-    if (enabled) {
-      void requestLocation();
-    }
   }
 
   const locationStatusText = !isLocationSettingLoaded

@@ -13,26 +13,60 @@ type Profile = {
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!user) {
       setProfile(null);
-      return;
+      setProfileLoading(false);
+      return () => {
+        cancelled = true;
+      };
     }
-    supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
+
+    const userId = user.id;
+
+    async function loadProfile() {
+      setProfileLoading(true);
+      setProfile(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, role")
+          .eq("id", userId)
+          .single();
+
+        if (cancelled) return;
+
         if (error) {
           console.error("Failed to fetch profile:", error);
           setProfile(null);
           return;
         }
+
         setProfile(data as Profile | null);
-      });
+
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to fetch profile:", error);
+          setProfile(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
-  return profile;
+  return { profile, profileLoading };
 }
