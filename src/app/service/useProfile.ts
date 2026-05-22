@@ -16,28 +16,55 @@ export function useProfile() {
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!user) {
       setProfile(null);
       setProfileLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    setProfileLoading(true);
-    supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
+    const userId = user.id;
+
+    async function loadProfile() {
+      setProfileLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, role")
+          .eq("id", userId)
+          .single();
+
+        if (cancelled) return;
+
         if (error) {
           console.error("Failed to fetch profile:", error);
           setProfile(null);
-          setProfileLoading(false);
           return;
         }
+
         setProfile(data as Profile | null);
-        setProfileLoading(false);
-      });
+
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to fetch profile:", error);
+          setProfile(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return { profile, profileLoading };
