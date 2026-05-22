@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
+import { Alert } from "react-native";
 import {
   type ReactNode,
   createContext,
@@ -27,10 +28,13 @@ type LocationContextValue = {
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 const LOCATION_ENABLED_KEY = "location_enabled";
+const LOCATION_ONBOARDING_SHOWN_KEY = "location_onboarding_shown";
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [isLocationEnabled, setIsLocationEnabled] = useState(true);
+  const [isLocationEnabled, setIsLocationEnabled] = useState(false);
   const [isLocationSettingLoaded, setIsLocationSettingLoaded] = useState(false);
+  const [shouldShowOnboardingPrompt, setShouldShowOnboardingPrompt] =
+    useState(false);
   const [locationState, setLocationState] = useState<LocationState>({
     status: "loading",
   });
@@ -73,11 +77,21 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
     async function loadSetting() {
       try {
-        const storedValue = await AsyncStorage.getItem(LOCATION_ENABLED_KEY);
+        const [storedValue, onboardingShownValue] = await Promise.all([
+          AsyncStorage.getItem(LOCATION_ENABLED_KEY),
+          AsyncStorage.getItem(LOCATION_ONBOARDING_SHOWN_KEY),
+        ]);
+
         if (cancelled) return;
 
         if (storedValue != null) {
           setIsLocationEnabled(storedValue === "true");
+        } else {
+          setIsLocationEnabled(false);
+        }
+
+        if (storedValue == null && onboardingShownValue !== "true") {
+          setShouldShowOnboardingPrompt(true);
         }
       } catch {
         // Keep default value on read error.
@@ -107,6 +121,37 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
     setLocationState({ status: "disabled" });
   }, [isLocationEnabled, isLocationSettingLoaded, requestLocation]);
+
+  useEffect(() => {
+    if (!shouldShowOnboardingPrompt || !isLocationSettingLoaded) {
+      return;
+    }
+
+    Alert.alert(
+      "Sijainti käyttöön?",
+      "Saako sovellus käyttää sijaintiasi lähellä olevien lounaspaikkojen näyttämiseen?",
+      [
+        {
+          text: "Ei",
+          style: "cancel",
+          onPress: () => {
+            setShouldShowOnboardingPrompt(false);
+            setLocationEnabled(false);
+            void AsyncStorage.setItem(LOCATION_ONBOARDING_SHOWN_KEY, "true");
+          },
+        },
+        {
+          text: "Kyllä",
+          onPress: () => {
+            setShouldShowOnboardingPrompt(false);
+            setLocationEnabled(true);
+            void AsyncStorage.setItem(LOCATION_ONBOARDING_SHOWN_KEY, "true");
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [isLocationSettingLoaded, setLocationEnabled, shouldShowOnboardingPrompt]);
 
   return (
     <LocationContext.Provider
