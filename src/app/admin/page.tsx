@@ -70,7 +70,7 @@ function formatTimestamp(value: string) {
 
 export default function Hallinta() {
   const router = useRouter();
-  const profile = useProfile();
+  const { profile, profileLoading } = useProfile();
 
   const [restaurants, setRestaurants] = useState<AdminRestaurantOption[]>([]);
   const [menus, setMenus] = useState<AdminMenuRow[]>([]);
@@ -86,12 +86,16 @@ export default function Hallinta() {
   const [loadError, setLoadError] = useState<string>("");
 
   useEffect(() => {
-    if (profile && profile.role !== "admin") {
+    if (!profileLoading && (!profile || profile.role !== "admin")) {
       router.replace("/");
     }
-  }, [profile, router]);
+  }, [profile, profileLoading, router]);
 
   useEffect(() => {
+    if (profileLoading || profile?.role !== "admin") {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadData() {
@@ -138,7 +142,7 @@ export default function Hallinta() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profile, profileLoading]);
 
   useEffect(() => {
     if (selected) {
@@ -170,12 +174,13 @@ export default function Hallinta() {
   }, []);
 
   useEffect(() => {
-    if (profile?.role !== "admin") return;
+    if (profileLoading || profile?.role !== "admin") return;
     void fetchRefreshStatus();
-  }, [fetchRefreshStatus, profile]);
+  }, [fetchRefreshStatus, profile, profileLoading]);
 
   useEffect(() => {
-    if (profile?.role !== "admin" || !refreshRun?.isActive) return;
+    if (profileLoading || profile?.role !== "admin" || !refreshRun?.isActive)
+      return;
 
     const interval = window.setInterval(() => {
       void fetchRefreshStatus();
@@ -184,13 +189,13 @@ export default function Hallinta() {
     return () => {
       window.clearInterval(interval);
     };
-  }, [fetchRefreshStatus, profile, refreshRun?.isActive]);
+  }, [fetchRefreshStatus, profile, profileLoading, refreshRun?.isActive]);
 
-  if (!profile) {
-    return <p>Ei oikeuksia palaa etusivulle</p>;
+  if (profileLoading) {
+    return <p>Ladataan hallintaa...</p>;
   }
-  if (profile.role !== "admin") {
-    router.replace("/");
+
+  if (!profile || profile.role !== "admin") {
     return null;
   }
 

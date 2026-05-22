@@ -11,7 +11,7 @@ import { useProfile } from "../service/useProfile";
 
 export default function Navigation() {
   const { isLoggedIn } = useAuth();
-  const profile = useProfile();
+  const { profile } = useProfile();
   const isAdmin = isLoggedIn && profile?.role === "admin";
 
   return (

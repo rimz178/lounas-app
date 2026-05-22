@@ -13,12 +13,16 @@ type Profile = {
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       setProfile(null);
+      setProfileLoading(false);
       return;
     }
+
+    setProfileLoading(true);
     supabase
       .from("profiles")
       .select("id, role")
@@ -28,11 +32,13 @@ export function useProfile() {
         if (error) {
           console.error("Failed to fetch profile:", error);
           setProfile(null);
+          setProfileLoading(false);
           return;
         }
         setProfile(data as Profile | null);
+        setProfileLoading(false);
       });
   }, [user]);
 
-  return profile;
+  return { profile, profileLoading };
 }
