@@ -15,7 +15,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Sovellus käyttää sijaintiasi lähimpien ravintoloiden näyttämiseen."
+        "NSLocationWhenInUseUsageDescription": "Sovellus käyttää sijaintiasi lähimpien ravintoloiden näyttämiseen.",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps"
+        ]
       }
     },
     "android": {
@@ -36,6 +39,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

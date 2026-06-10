@@ -1,3 +1,4 @@
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useNavigation,
@@ -263,24 +264,96 @@ export default function MapScreen() {
     }
   }
 
-  async function openUrl(url: string) {
+  async function openExternalUrl(url: string) {
     try {
+      if (/^https?:\/\//i.test(url)) {
+        await WebBrowser.openBrowserAsync(url);
+        return;
+      }
+
       const canOpen = await Linking.canOpenURL(url);
       if (!canOpen) return;
       await Linking.openURL(url);
-    } catch (openUrlError) {
-      console.error("Failed to open URL", openUrlError);
+    } catch (openExternalUrlError) {
+      console.error("Failed to open external URL", openExternalUrlError);
+    }
+  }
+
+  async function openMapUrl(url: string, fallbackUrl?: string) {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        if (fallbackUrl) {
+          await openExternalUrl(fallbackUrl);
+        }
+        return;
+      }
+
+      await Linking.openURL(url);
+    } catch (openMapUrlError) {
+      console.error("Failed to open map URL", openMapUrlError);
+      if (fallbackUrl) {
+        await openExternalUrl(fallbackUrl);
+      }
     }
   }
 
   function openDirections(restaurant: CoordinateRestaurant) {
     const destination = `${restaurant.lat},${restaurant.lng}`;
-    const mapsUrl =
+    const encodedName = encodeURIComponent(restaurant.name);
+    const appleMapsUrl = `http://maps.apple.com/?daddr=${destination}&q=${encodedName}`;
+    const googleMapsAppUrl =
       Platform.OS === "ios"
-        ? `http://maps.apple.com/?daddr=${destination}`
-        : `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+        ? `comgooglemaps://?daddr=${destination}&directionsmode=driving`
+        : `google.navigation:q=${destination}`;
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    const androidSystemChooserUrl = `geo:0,0?q=${destination}(${encodedName})`;
 
-    void openUrl(mapsUrl);
+    if (Platform.OS === "ios") {
+      Alert.alert("Avaa reitti", "Valitse karttasovellus", [
+        {
+          text: "Apple Maps",
+          onPress: () => {
+            void openMapUrl(appleMapsUrl, googleMapsWebUrl);
+          },
+        },
+        {
+          text: "Google Maps",
+          onPress: () => {
+            void openMapUrl(googleMapsAppUrl, googleMapsWebUrl);
+          },
+        },
+        {
+          text: "Peruuta",
+          style: "cancel",
+        },
+      ]);
+      return;
+    }
+
+    Alert.alert("Avaa reitti", "Valitse karttasovellus", [
+      {
+        text: "Google Maps",
+        onPress: () => {
+          void openMapUrl(googleMapsAppUrl, googleMapsWebUrl);
+        },
+      },
+      {
+        text: "Järjestelmän valinta",
+        onPress: () => {
+          void openMapUrl(androidSystemChooserUrl, googleMapsWebUrl);
+        },
+      },
+      {
+        text: "Peruuta",
+        style: "cancel",
+      },
+    ]);
+  }
+
+  function openRestaurantWebsite(restaurant: CoordinateRestaurant) {
+    if (!restaurant.url) return;
+    void openExternalUrl(restaurant.url);
   }
 
   function centerOnUser() {
@@ -462,6 +535,18 @@ export default function MapScreen() {
             >
               <Text style={styles.actionButtonText}>Avaa menu</Text>
             </Pressable>
+
+            {selectedRestaurant.url ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  pressed && styles.pressedButton,
+                ]}
+                onPress={() => openRestaurantWebsite(selectedRestaurant)}
+              >
+                <Text style={styles.actionButtonText}>Sivu</Text>
+              </Pressable>
+            ) : null}
 
             <Pressable
               style={({ pressed }) => [
