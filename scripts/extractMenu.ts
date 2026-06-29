@@ -42,7 +42,7 @@ Language:
 `;
 
 export async function extractMenu(text: string) {
-  const MAX_CHARS = 8000;
+  const MAX_CHARS = 20000;
   const truncatedText = text.slice(0, MAX_CHARS);
 
   const today = new Date().toLocaleDateString("fi-FI", {

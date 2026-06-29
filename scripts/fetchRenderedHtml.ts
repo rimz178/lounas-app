@@ -13,23 +13,13 @@ export async function fetchRenderedHtml(
   try {
     console.log(`Navigating to: ${url}`);
 
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url, { waitUntil: "networkidle" }).catch(async () => {
+      console.log(`networkidle timed out for ${url}, falling back to load`);
+      await page.waitForLoadState("load").catch(() => {});
+    });
 
-    await page
-      .waitForSelector("div.lunch-block, .menu-item, .lounas-lista", {
-        timeout: 15_000,
-      })
-      .catch(() => {
-        console.log(
-          "Did not find a specific menu element, continuing with what we have.",
-        );
-      });
-
-    await page
-      .waitForLoadState("networkidle", { timeout: 10_000 })
-      .catch(() => {
-        console.log(`networkidle timeout for ${url}, continuing...`);
-      });
+    // Odotetaan hetki, että JavaScript-renderöity sisältö ehtii latautua
+    await page.waitForTimeout(2000);
 
     const chunks: string[] = [];
     for (const frame of page.frames()) {
