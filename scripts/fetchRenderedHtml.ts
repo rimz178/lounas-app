@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import type { BrowserContext } from "playwright";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
@@ -22,10 +22,10 @@ export async function fetchRenderedHtml(
     if (contentType.includes("application/pdf")) {
       try {
         const buffer = await response.body();
-        const pdfData = await pdfParse(buffer);
-        if (pdfData.text.trim()) {
+        const result = await new PDFParse({ data: buffer }).getText();
+        if (result.text.trim()) {
           console.log(`Intercepted PDF from: ${response.url()}`);
-          pdfTexts.push(pdfData.text);
+          pdfTexts.push(result.text);
         }
       } catch {
         // PDF-parsinta epäonnistui, ei kriittistä
@@ -71,10 +71,10 @@ export async function fetchRenderedHtml(
         const res = await fetch(pdfUrl);
         if (!res.ok) continue;
         const buffer = Buffer.from(await res.arrayBuffer());
-        const pdfData = await pdfParse(buffer);
-        if (pdfData.text.trim()) {
+        const result = await new PDFParse({ data: buffer }).getText();
+        if (result.text.trim()) {
           console.log(`Extracted PDF from link: ${pdfUrl}`);
-          pdfTexts.push(pdfData.text);
+          pdfTexts.push(result.text);
         }
       } catch {
         // PDF-lataus tai -parsinta epäonnistui
