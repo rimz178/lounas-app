@@ -27,8 +27,8 @@ export async function fetchRenderedHtml(
           console.log(`Intercepted PDF from: ${response.url()}`);
           pdfTexts.push(result.text);
         }
-      } catch {
-        // PDF-parsinta epäonnistui, ei kriittistä
+      } catch (err) {
+        console.error(`Intercepted PDF parse error (${response.url()}):`, err);
       }
       return;
     }
@@ -66,18 +66,24 @@ export async function fetchRenderedHtml(
         .filter((href) => href.toLowerCase().includes(".pdf")),
     );
 
+    if (pdfLinks.length > 0) {
+      console.log(`Found ${pdfLinks.length} PDF link(s) on ${url}:`, pdfLinks);
+    }
     for (const pdfUrl of pdfLinks) {
       try {
-        const res = await fetch(pdfUrl);
-        if (!res.ok) continue;
-        const buffer = Buffer.from(await res.arrayBuffer());
+        const res = await context.request.get(pdfUrl);
+        if (!res.ok()) {
+          console.log(`PDF fetch failed (${res.status()}): ${pdfUrl}`);
+          continue;
+        }
+        const buffer = await res.body();
         const result = await new PDFParse({ data: buffer }).getText();
         if (result.text.trim()) {
           console.log(`Extracted PDF from link: ${pdfUrl}`);
           pdfTexts.push(result.text);
         }
-      } catch {
-        // PDF-lataus tai -parsinta epäonnistui
+      } catch (err) {
+        console.error(`PDF fetch/parse error for ${pdfUrl}:`, err);
       }
     }
 
