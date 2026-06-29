@@ -1,6 +1,7 @@
 import type { BrowserContext } from "playwright";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
+const MENU_KEYWORDS = ["lounas", "menu", "viikko", "ruokalista", "lunch"];
 
 export async function fetchRenderedHtml(
   context: BrowserContext,
@@ -10,6 +11,27 @@ export async function fetchRenderedHtml(
   page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(DEFAULT_TIMEOUT_MS);
 
+  const apiResponses: string[] = [];
+
+  // Interceptoidaan kaikki XHR/fetch-vastaukset ennen navigointia.
+  // Jos ravintolan sivu hakee menun erilliseltä API:lta, se nappautuu tässä.
+  page.on("response", async (response) => {
+    const contentType = response.headers()["content-type"] ?? "";
+    if (!contentType.includes("json") && !contentType.includes("text/plain"))
+      return;
+
+    try {
+      const body = await response.text();
+      const lower = body.toLowerCase();
+      const hasMenuContent = MENU_KEYWORDS.some((kw) => lower.includes(kw));
+      if (hasMenuContent && body.length < 200_000) {
+        apiResponses.push(body);
+      }
+    } catch {
+      // Vastaus saattaa olla jo suljettu, ei kriittistä
+    }
+  });
+
   try {
     console.log(`Navigating to: ${url}`);
 
@@ -18,7 +40,7 @@ export async function fetchRenderedHtml(
       await page.waitForLoadState("load").catch(() => {});
     });
 
-    // Odotetaan hetki, että JavaScript-renderöity sisältö ehtii latautua
+    // Lisäodotus lazy-load-sisällölle
     await page.waitForTimeout(2000);
 
     const chunks: string[] = [];
@@ -31,7 +53,13 @@ export async function fetchRenderedHtml(
       if (text.trim()) chunks.push(text.trim());
     }
 
-    const visibleText = chunks.join("\n\n---\n\n").trim();
+    const allParts = [...chunks];
+    if (apiResponses.length > 0) {
+      console.log(`Captured ${apiResponses.length} API response(s) for ${url}`);
+      allParts.push("=== API-vastaukset ===", ...apiResponses);
+    }
+
+    const visibleText = allParts.join("\n\n---\n\n").trim();
     console.log(
       `Fetched visible text for ${url}:`,
       visibleText.substring(0, 500),
@@ -40,8 +68,8 @@ export async function fetchRenderedHtml(
     return visibleText;
   } catch (error) {
     console.error(`Error fetching URL ${url}:`, error);
-    return ""; // Palauta tyhjä merkkijono virhetilanteessa
+    return "";
   } finally {
-    await page.close(); // Suljetaan vain sivu, ei koko selainta
+    await page.close();
   }
 }

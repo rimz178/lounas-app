@@ -13,7 +13,7 @@ const systemPrompt = `
 You are a tool that extracts lunch menus from Finnish restaurant websites.
 
 Rules:
-- Use ONLY the provided HTML content.
+- Use ONLY the provided content (may include visible page text, JSON API responses, or both).
 - Look for keywords like "lounas", "menu", "lounaslista", or "lounasmenu".
 - Extract only the lunch menu items and their corresponding days.
 - Structure the output by day of the week (Maanantai, Tiistai, etc.) or as a weekly list.
