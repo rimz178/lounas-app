@@ -1,15 +1,13 @@
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
-import { OpenAI } from "openai";
 
-const apiKey = process.env.OPENAI_KEY;
+const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
-  throw new Error("OPENAI_API_KEY environment variable is not set");
+  throw new Error("ANTHROPIC_API_KEY environment variable is not set");
 }
 
-const openai = new OpenAI({
-  apiKey: apiKey,
-});
+const client = new Anthropic({ apiKey });
 
 const systemPrompt = `
 You are a tool that extracts lunch menus from Finnish restaurant websites.
@@ -54,11 +52,11 @@ export async function extractMenu(text: string) {
     day: "numeric",
   });
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    temperature: 0.2,
+  const message = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1024,
+    system: systemPrompt,
     messages: [
-      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: `Today is ${today}. Extract the menu based on the following content:\n\n${truncatedText}`,
@@ -66,8 +64,8 @@ export async function extractMenu(text: string) {
     ],
   });
 
-  const response =
-    completion.choices?.[0]?.message?.content ?? "No lunch menu found.";
-  console.log("OpenAI response:", response);
+  const block = message.content[0];
+  const response = block.type === "text" ? block.text : "No lunch menu found.";
+  console.log("Claude response:", response);
   return response;
 }

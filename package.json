@@ -11,12 +11,12 @@
     "refresh": "tsx scripts/refresh.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.3.1",
     "lru-cache": "^11.2.6",
     "next": "^16.1.6",
-    "openai": "^6.17.0",
     "p-limit": "^7.3.0",
     "pdf-parse": "^2.4.5",
     "react": "19.2.3",
