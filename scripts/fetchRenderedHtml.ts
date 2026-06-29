@@ -33,9 +33,13 @@ export async function fetchRenderedHtml(
       return;
     }
 
-    // JSON/text API-vastaukset
-    if (!contentType.includes("json") && !contentType.includes("text/plain"))
-      return;
+    // JSON, plain text, tai AJAX-haettu HTML (esim. ulkoinen menupalvelu)
+    const isMenuData =
+      contentType.includes("json") || contentType.includes("text/plain");
+    const isAjaxHtml =
+      contentType.includes("text/html") &&
+      ["xhr", "fetch"].includes(response.request().resourceType());
+    if (!isMenuData && !isAjaxHtml) return;
 
     try {
       const body = await response.text();
@@ -58,6 +62,16 @@ export async function fetchRenderedHtml(
     });
 
     await page.waitForTimeout(2000);
+
+    // Scrollataan sivua alas, jotta lazy-loadattu sisältö latautuu
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight / 2);
+    });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+    await page.waitForTimeout(1200);
 
     // Haetaan kaikki PDF-linkit sivulta ja ladataan ne erikseen
     const pdfLinks = await page.evaluate(() =>
