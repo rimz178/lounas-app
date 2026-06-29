@@ -13,7 +13,7 @@ import MenuEditor, {
 import { supabase } from "../service/supabaseClient";
 import { useProfile } from "../service/useProfile";
 /**
- * Hallintasivu, jossa voi päivittää ruokalistat käyttäen OpenAi:ta, lisätä
+ * Hallintasivu, jossa voi päivittää ruokalistat käyttäen Claudea, lisätä
  * ravintoloita, poistaa ravintoloita ja muokata ruokalistoja.
  */
 type UpdateStatus = "idle" | "loading" | "success" | "error";
@@ -395,7 +395,7 @@ export default function Hallinta() {
             ? "Tarkistetaan..."
             : isRefreshActive
               ? "Päivitys käynnissä"
-              : "Päivitä ruokalistat OpenAI:lla"}
+              : "Päivitä ruokalistat Claudella"}
         </button>
 
         <div className="mt-4 space-y-2">
