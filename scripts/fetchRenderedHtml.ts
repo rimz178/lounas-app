@@ -64,21 +64,23 @@ export async function fetchRenderedHtml(
     await page.waitForTimeout(2000);
 
     // Scrollataan sivua alas, jotta lazy-loadattu sisältö latautuu
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight / 2);
-    });
+    await page
+      .evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2))
+      .catch(() => {});
     await page.waitForTimeout(800);
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
+    await page
+      .evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+      .catch(() => {});
     await page.waitForTimeout(1200);
 
     // Haetaan kaikki PDF-linkit sivulta ja ladataan ne erikseen
-    const pdfLinks = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a[href]"))
-        .map((a) => (a as HTMLAnchorElement).href)
-        .filter((href) => href.toLowerCase().includes(".pdf")),
-    );
+    const pdfLinks = await page
+      .evaluate(() =>
+        Array.from(document.querySelectorAll("a[href]"))
+          .map((a) => (a as HTMLAnchorElement).href)
+          .filter((href) => href.toLowerCase().includes(".pdf")),
+      )
+      .catch(() => [] as string[]);
 
     if (pdfLinks.length > 0) {
       console.log(`Found ${pdfLinks.length} PDF link(s) on ${url}:`, pdfLinks);
