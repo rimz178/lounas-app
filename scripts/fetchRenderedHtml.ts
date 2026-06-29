@@ -1,3 +1,4 @@
+import pdfParse from "pdf-parse";
 import type { BrowserContext } from "playwright";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
@@ -12,11 +13,27 @@ export async function fetchRenderedHtml(
   page.setDefaultNavigationTimeout(DEFAULT_TIMEOUT_MS);
 
   const apiResponses: string[] = [];
+  const pdfTexts: string[] = [];
 
-  // Interceptoidaan kaikki XHR/fetch-vastaukset ennen navigointia.
-  // Jos ravintolan sivu hakee menun erilliseltä API:lta, se nappautuu tässä.
   page.on("response", async (response) => {
     const contentType = response.headers()["content-type"] ?? "";
+
+    // PDF ladattu automaattisesti (esim. iframe tai suora osoite)
+    if (contentType.includes("application/pdf")) {
+      try {
+        const buffer = await response.body();
+        const pdfData = await pdfParse(buffer);
+        if (pdfData.text.trim()) {
+          console.log(`Intercepted PDF from: ${response.url()}`);
+          pdfTexts.push(pdfData.text);
+        }
+      } catch {
+        // PDF-parsinta epäonnistui, ei kriittistä
+      }
+      return;
+    }
+
+    // JSON/text API-vastaukset
     if (!contentType.includes("json") && !contentType.includes("text/plain"))
       return;
 
@@ -28,7 +45,7 @@ export async function fetchRenderedHtml(
         apiResponses.push(body);
       }
     } catch {
-      // Vastaus saattaa olla jo suljettu, ei kriittistä
+      // Vastaus saattaa olla jo suljettu
     }
   });
 
@@ -40,8 +57,29 @@ export async function fetchRenderedHtml(
       await page.waitForLoadState("load").catch(() => {});
     });
 
-    // Lisäodotus lazy-load-sisällölle
     await page.waitForTimeout(2000);
+
+    // Haetaan kaikki PDF-linkit sivulta ja ladataan ne erikseen
+    const pdfLinks = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("a[href]"))
+        .map((a) => (a as HTMLAnchorElement).href)
+        .filter((href) => href.toLowerCase().includes(".pdf")),
+    );
+
+    for (const pdfUrl of pdfLinks) {
+      try {
+        const res = await fetch(pdfUrl);
+        if (!res.ok) continue;
+        const buffer = Buffer.from(await res.arrayBuffer());
+        const pdfData = await pdfParse(buffer);
+        if (pdfData.text.trim()) {
+          console.log(`Extracted PDF from link: ${pdfUrl}`);
+          pdfTexts.push(pdfData.text);
+        }
+      } catch {
+        // PDF-lataus tai -parsinta epäonnistui
+      }
+    }
 
     const chunks: string[] = [];
     for (const frame of page.frames()) {
@@ -57,6 +95,10 @@ export async function fetchRenderedHtml(
     if (apiResponses.length > 0) {
       console.log(`Captured ${apiResponses.length} API response(s) for ${url}`);
       allParts.push("=== API-vastaukset ===", ...apiResponses);
+    }
+    if (pdfTexts.length > 0) {
+      console.log(`Extracted ${pdfTexts.length} PDF(s) for ${url}`);
+      allParts.push("=== PDF-menut ===", ...pdfTexts);
     }
 
     const visibleText = allParts.join("\n\n---\n\n").trim();
