@@ -1,8 +1,9 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import LoginScreen from "../screens/LoginScreen";
 import MenuScreen from "../screens/MenuScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-import type { RootStackParamList } from "./types";
 import TabsNavigator from "./TabsNavigator";
+import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -23,6 +24,15 @@ export default function RootNavigator() {
         name="Settings"
         component={SettingsScreen}
         options={{ title: "Asetukset", headerBackTitle: "Takaisin" }}
+      />
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{
+          title: "Kirjaudu sisään",
+          headerBackTitle: "Takaisin",
+          presentation: "modal",
+        }}
       />
     </Stack.Navigator>
   );

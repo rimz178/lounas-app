@@ -1,3 +1,4 @@
+import { type RouteProp, useRoute } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,23 +7,20 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRoute, type RouteProp } from "@react-navigation/native";
-import { getMenuForRestaurant } from "../services/restaurants";
 import type { RootStackParamList } from "../navigation/types";
+import { getMenuForRestaurant } from "../services/restaurants";
 
 export default function MenuScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "Menu">>();
   const { restaurantId, restaurantName, initialMenu } = route.params;
 
   const hasInitialMenuParam = initialMenu !== undefined;
-
   const [menuText, setMenuText] = useState<string | null>(initialMenu ?? null);
   const [loading, setLoading] = useState(!hasInitialMenuParam);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasInitialMenuParam) return;
-
     (async () => {
       try {
         const menu = await getMenuForRestaurant(restaurantId);
@@ -76,7 +74,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 40,
   },
   title: {
     fontSize: 24,

@@ -1,11 +1,12 @@
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import {
+  type RouteProp,
   useNavigation,
   useRoute,
-  type RouteProp,
 } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,16 +20,17 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import { useLocation } from "../context/LocationContext";
+import type {
+  BottomTabParamList,
+  RootStackParamList,
+} from "../navigation/types";
 import {
-  type Restaurant,
   getMenuForRestaurant,
   getRestaurants,
+  type Restaurant,
 } from "../services/restaurants";
-import type {
-  RootStackParamList,
-  BottomTabParamList,
-} from "../navigation/types";
-import { useLocation } from "../context/LocationContext";
+import { getReviewStats, type ReviewStats } from "../services/reviews";
 
 type CoordinateRestaurant = Restaurant & { lat: number; lng: number };
 
@@ -95,6 +97,9 @@ export default function MapScreen() {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
   const [menuLoading, setMenuLoading] = useState(false);
   const [menuCache, setMenuCache] = useState<Record<string, string | null>>({});
+  const [reviewStatsCache, setReviewStatsCache] = useState<
+    Record<string, ReviewStats>
+  >({});
   const menuRequestIdRef = useRef(0);
   const selectedRestaurantIdRef = useRef<string | null>(null);
 
@@ -220,6 +225,14 @@ export default function MapScreen() {
     selectedRestaurantIdRef.current = restaurant.id;
     setSelectedRestaurant(restaurant);
     setSelectedMenu(null);
+
+    if (!reviewStatsCache[restaurant.id]) {
+      getReviewStats(restaurant.id).then((stats) => {
+        if (stats) {
+          setReviewStatsCache((prev) => ({ ...prev, [restaurant.id]: stats }));
+        }
+      });
+    }
 
     const cachedMenu = menuCache[restaurant.id];
     if (cachedMenu !== undefined) {
@@ -501,6 +514,28 @@ export default function MapScreen() {
             </Pressable>
           </View>
 
+          {reviewStatsCache[selectedRestaurant.id] ? (
+            <View style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const rounded = Math.round(
+                  reviewStatsCache[selectedRestaurant.id].average,
+                );
+                return (
+                  <Ionicons
+                    key={n}
+                    name={n <= rounded ? "star" : "star-outline"}
+                    size={13}
+                    color={n <= rounded ? "#f59e0b" : "#d1d5db"}
+                  />
+                );
+              })}
+              <Text style={styles.ratingText}>
+                {reviewStatsCache[selectedRestaurant.id].average.toFixed(1)} (
+                {reviewStatsCache[selectedRestaurant.id].count})
+              </Text>
+            </View>
+          ) : null}
+
           {menuLoading ? (
             <ActivityIndicator size="small" color="#171717" />
           ) : (
@@ -642,7 +677,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
     marginBottom: 8,
+  },
+  ratingText: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginLeft: 2,
   },
   detailTitle: {
     flex: 1,
