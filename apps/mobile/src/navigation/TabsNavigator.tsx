@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRef, useState } from "react";
 import {
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../context/AuthContext";
 import ListScreen from "../screens/ListScreen";
 import MapScreen from "../screens/MapScreen";
 import type { BottomTabParamList, RootStackParamList } from "./types";
@@ -36,6 +37,7 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
   const insets = useSafeAreaInsets();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const { isLoggedIn, user, signOut } = useAuth();
 
   function openDrawer() {
     setDrawerOpen(true);
@@ -66,6 +68,20 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
       const parentNavigation =
         navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
       parentNavigation?.navigate("Settings");
+    });
+  }
+
+  function navigateToLogin() {
+    closeDrawer(() => {
+      const parentNavigation =
+        navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+      parentNavigation?.navigate("Login");
+    });
+  }
+
+  async function handleSignOut() {
+    closeDrawer(async () => {
+      await signOut();
     });
   }
 
@@ -157,6 +173,37 @@ function AppBar({ navigation, route }: BottomTabHeaderProps) {
                 {DRAWER_SETTINGS_ITEM.label}
               </Text>
             </Pressable>
+
+            <View style={styles.drawerDivider} />
+
+            {isLoggedIn ? (
+              <>
+                <Text style={styles.drawerUserEmail} numberOfLines={1}>
+                  {user?.email}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.drawerItem,
+                    pressed && styles.drawerItemPressed,
+                  ]}
+                  onPress={handleSignOut}
+                >
+                  <Ionicons name="log-out-outline" size={20} color="#171717" />
+                  <Text style={styles.drawerItemText}>Kirjaudu ulos</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.drawerItem,
+                  pressed && styles.drawerItemPressed,
+                ]}
+                onPress={navigateToLogin}
+              >
+                <Ionicons name="log-in-outline" size={20} color="#171717" />
+                <Text style={styles.drawerItemText}>Kirjaudu sisään</Text>
+              </Pressable>
+            )}
           </Animated.View>
         </View>
       </Modal>
@@ -276,5 +323,11 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#e5e7eb",
     marginVertical: 10,
+  },
+  drawerUserEmail: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginLeft: 12,
+    marginBottom: 4,
   },
 });
