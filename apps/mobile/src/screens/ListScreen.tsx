@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import {
+  type RouteProp,
   useNavigation,
   useRoute,
-  type RouteProp,
 } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,19 +16,27 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useAuth } from "../context/AuthContext";
+import { useLocation } from "../context/LocationContext";
+import type {
+  BottomTabParamList,
+  RootStackParamList,
+} from "../navigation/types";
 import {
-  type Restaurant,
-  type ManualArea,
   AREA_BOUNDS,
   getDistanceKm,
   getMenuForRestaurant,
   getRestaurants,
+  type ManualArea,
+  type Restaurant,
 } from "../services/restaurants";
-import type {
-  RootStackParamList,
-  BottomTabParamList,
-} from "../navigation/types";
-import { useLocation } from "../context/LocationContext";
+import {
+  getReviewStats,
+  getReviewStatsBatch,
+  getUserReviewsBatch,
+  type ReviewStats,
+  upsertReview,
+} from "../services/reviews";
 
 export default function ListScreen() {
   const navigation =
@@ -35,6 +44,7 @@ export default function ListScreen() {
   const route = useRoute<RouteProp<BottomTabParamList, "Lounaspaikat">>();
   const listRef = useRef<FlatList<Restaurant>>(null);
   const searchInputRef = useRef<TextInput | null>(null);
+  const { isLoggedIn } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +53,19 @@ export default function ListScreen() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [area, setArea] = useState<ManualArea>("kaikki");
   const { locationState, setLocationEnabled, requestLocation } = useLocation();
+
+  // Review state
+  const [reviewStats, setReviewStats] = useState<Record<string, ReviewStats>>(
+    {},
+  );
+  const [userRatings, setUserRatings] = useState<Record<string, number>>({});
+  const [pendingRatings, setPendingRatings] = useState<Record<string, number>>(
+    {},
+  );
+  const [pendingComments, setPendingComments] = useState<
+    Record<string, string>
+  >({});
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const resetListToTop = useCallback(() => {
     requestAnimationFrame(() => {
@@ -73,6 +96,63 @@ export default function ListScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!restaurants.length) return;
+    const ids = restaurants.map((r) => r.id);
+    getReviewStatsBatch(ids).then(setReviewStats);
+  }, [restaurants]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !restaurants.length) {
+      setUserRatings({});
+      setPendingRatings({});
+      return;
+    }
+    const ids = restaurants.map((r) => r.id);
+    getUserReviewsBatch(ids).then(setUserRatings);
+  }, [isLoggedIn, restaurants]);
+
+  function handleStarTap(restaurantId: string, rating: number) {
+    setPendingRatings((prev) => ({ ...prev, [restaurantId]: rating }));
+  }
+
+  async function handleSaveReview(restaurantId: string) {
+    const rating = pendingRatings[restaurantId];
+    if (!rating) return;
+
+    setSavingIds((prev) => new Set(prev).add(restaurantId));
+    try {
+      await upsertReview(
+        restaurantId,
+        rating,
+        pendingComments[restaurantId] ?? "",
+      );
+      setUserRatings((prev) => ({ ...prev, [restaurantId]: rating }));
+      setPendingRatings((prev) => {
+        const next = { ...prev };
+        delete next[restaurantId];
+        return next;
+      });
+      setPendingComments((prev) => {
+        const next = { ...prev };
+        delete next[restaurantId];
+        return next;
+      });
+      const updated = await getReviewStats(restaurantId);
+      if (updated) {
+        setReviewStats((prev) => ({ ...prev, [restaurantId]: updated }));
+      }
+    } catch {
+      // ignore; user can try again
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(restaurantId);
+        return next;
+      });
+    }
+  }
 
   async function openMenu(restaurant: Restaurant) {
     const cached = menuCache[restaurant.id];
@@ -251,37 +331,116 @@ export default function ListScreen() {
             <Text style={styles.emptyText}>Ei ravintoloita valinnalla.</Text>
           )
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.name}>{item.name}</Text>
-              {locationState.status === "granted" &&
-                item.lat != null &&
-                item.lng != null && (
-                  <Text style={styles.distance}>
-                    {getDistanceKm(
-                      locationState.coords.lat,
-                      locationState.coords.lng,
-                      item.lat,
-                      item.lng,
-                    ).toFixed(1)}{" "}
-                    km
+        renderItem={({ item }) => {
+          const stats = reviewStats[item.id];
+          const roundedAvg = stats ? Math.round(stats.average) : 0;
+          const displayRating =
+            pendingRatings[item.id] ?? userRatings[item.id] ?? 0;
+          const hasPendingChange =
+            pendingRatings[item.id] !== undefined &&
+            pendingRatings[item.id] !== userRatings[item.id];
+          const isSaving = savingIds.has(item.id);
+
+          return (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.name}>{item.name}</Text>
+                {locationState.status === "granted" &&
+                  item.lat != null &&
+                  item.lng != null && (
+                    <Text style={styles.distance}>
+                      {getDistanceKm(
+                        locationState.coords.lat,
+                        locationState.coords.lng,
+                        item.lat,
+                        item.lng,
+                      ).toFixed(1)}{" "}
+                      km
+                    </Text>
+                  )}
+              </View>
+
+              {stats ? (
+                <View style={styles.statsRow}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Ionicons
+                      key={n}
+                      name={n <= roundedAvg ? "star" : "star-outline"}
+                      size={13}
+                      color={n <= roundedAvg ? "#f59e0b" : "#d1d5db"}
+                    />
+                  ))}
+                  <Text style={styles.statsText}>
+                    {stats.average.toFixed(1)} ({stats.count})
                   </Text>
-                )}
+                </View>
+              ) : null}
+
+              {isLoggedIn ? (
+                <View style={styles.reviewSection}>
+                  <View style={styles.starPickerRow}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Pressable
+                        key={n}
+                        onPress={() => handleStarTap(item.id, n)}
+                        style={styles.starTap}
+                      >
+                        <Ionicons
+                          name={n <= displayRating ? "star" : "star-outline"}
+                          size={22}
+                          color={n <= displayRating ? "#f59e0b" : "#d1d5db"}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                  {hasPendingChange ? (
+                    <>
+                      <TextInput
+                        style={styles.commentInput}
+                        placeholder="Kommentti (valinnainen)"
+                        placeholderTextColor="#9ca3af"
+                        value={pendingComments[item.id] ?? ""}
+                        onChangeText={(text) =>
+                          setPendingComments((prev) => ({
+                            ...prev,
+                            [item.id]: text,
+                          }))
+                        }
+                        multiline
+                        numberOfLines={2}
+                      />
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.saveButton,
+                          pressed && styles.pressedButton,
+                          isSaving && styles.disabledButton,
+                        ]}
+                        onPress={() => void handleSaveReview(item.id)}
+                        disabled={isSaving}
+                      >
+                        <Text style={styles.saveButtonText}>
+                          {isSaving ? "..." : "Tallenna"}
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuButton,
+                  pressed && styles.pressedButton,
+                ]}
+                onPress={() => {
+                  void openMenu(item);
+                }}
+              >
+                <Text style={styles.menuButtonText}>Avaa menu</Text>
+              </Pressable>
             </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.menuButton,
-                pressed && styles.pressedButton,
-              ]}
-              onPress={() => {
-                void openMenu(item);
-              }}
-            >
-              <Text style={styles.menuButtonText}>Avaa menu</Text>
-            </Pressable>
-          </View>
-        )}
+          );
+        }}
       />
     </View>
   );
@@ -364,7 +523,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   name: {
     fontSize: 16,
@@ -377,6 +536,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6b7280",
     marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginBottom: 8,
+  },
+  statsText: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginLeft: 3,
+  },
+  reviewSection: {
+    marginBottom: 10,
+    gap: 8,
+  },
+  starPickerRow: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  starTap: {
+    padding: 2,
+  },
+  commentInput: {
+    backgroundColor: "#f9fafb",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: "#171717",
+    textAlignVertical: "top",
+  },
+  saveButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#171717",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
   },
   menuButton: {
     alignSelf: "flex-start",
@@ -392,6 +596,9 @@ const styles = StyleSheet.create({
   },
   pressedButton: {
     opacity: 0.85,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   errorText: {
     color: "#991b1b",
