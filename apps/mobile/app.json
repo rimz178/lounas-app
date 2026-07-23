@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Lounas tänään",
-    "slug": "lounas-tanaan",
+    "slug": "lounastanaan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -43,6 +43,12 @@
     "plugins": [
       "expo-web-browser",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f302eb57-3070-45ea-8c4e-73d05c742539"
+      }
+    },
+    "owner": "edie17"
   }
 }
