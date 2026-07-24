@@ -45,8 +45,8 @@ async function refresh() {
 
       try {
         // Välitä selainkonteksti funktiolle
-        const text = await fetchRenderedHtml(context, r.url);
-        const menu = await extractMenu(text);
+        const result = await fetchRenderedHtml(context, r.url);
+        const menu = await extractMenu(result.text, result.images);
 
         const { error: upsertError } = await supabase.from("menus").upsert(
           {
