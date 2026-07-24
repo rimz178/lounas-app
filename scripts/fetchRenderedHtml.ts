@@ -1,8 +1,29 @@
 import { PDFParse } from "pdf-parse";
 import type { BrowserContext } from "playwright";
+import { readPdfWithClaude } from "./extractMenu";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MENU_KEYWORDS = ["lounas", "menu", "viikko", "ruokalista", "lunch"];
+
+// Jäsentää PDF-puskurin: kokeillaan ensin pdf-parsea, ja jos tekstikerrosta ei löydy
+// (esim. skannattu/kuvattu lounaslista), pyydetään Claudea lukemaan PDF suoraan.
+async function parsePdfBuffer(
+  buffer: Buffer,
+  sourceUrl: string,
+): Promise<string> {
+  try {
+    const result = await new PDFParse({ data: buffer }).getText();
+    let text = result.text.trim();
+    if (!text) {
+      console.log(`No text layer in PDF, trying Claude vision: ${sourceUrl}`);
+      text = (await readPdfWithClaude(buffer)).trim();
+    }
+    return text;
+  } catch (err) {
+    console.error(`PDF parse error for ${sourceUrl}:`, err);
+    return "";
+  }
+}
 
 export async function fetchRenderedHtml(
   context: BrowserContext,
@@ -20,15 +41,13 @@ export async function fetchRenderedHtml(
 
     // PDF ladattu automaattisesti (esim. iframe tai suora osoite)
     if (contentType.includes("application/pdf")) {
-      try {
-        const buffer = await response.body();
-        const result = await new PDFParse({ data: buffer }).getText();
-        if (result.text.trim()) {
+      const buffer = await response.body().catch(() => null);
+      if (buffer) {
+        const text = await parsePdfBuffer(buffer, response.url());
+        if (text) {
           console.log(`Intercepted PDF from: ${response.url()}`);
-          pdfTexts.push(result.text);
+          pdfTexts.push(text);
         }
-      } catch (err) {
-        console.error(`Intercepted PDF parse error (${response.url()}):`, err);
       }
       return;
     }
@@ -73,14 +92,40 @@ export async function fetchRenderedHtml(
       .catch(() => {});
     await page.waitForTimeout(1200);
 
-    // Haetaan kaikki PDF-linkit sivulta ja ladataan ne erikseen
-    const pdfLinks = await page
-      .evaluate(() =>
-        Array.from(document.querySelectorAll("a[href]"))
-          .map((a) => (a as HTMLAnchorElement).href)
-          .filter((href) => href.toLowerCase().includes(".pdf")),
-      )
+    // Haetaan sivulta kaikki mahdolliset PDF-lähteet: suorat linkit sekä
+    // iframe/embed/object-elementit (upotetut PDF-katselimet eivät aina
+    // näytä ".pdf":ää URL:ssa)
+    const candidateUrls = await page
+      .evaluate(() => {
+        const hrefs = Array.from(document.querySelectorAll("a[href]")).map(
+          (a) => (a as HTMLAnchorElement).href,
+        );
+        const iframeSrcs = Array.from(
+          document.querySelectorAll("iframe[src]"),
+        ).map((el) => (el as HTMLIFrameElement).src);
+        const embedSrcs = Array.from(
+          document.querySelectorAll("embed[src]"),
+        ).map((el) => (el as HTMLEmbedElement).src);
+        const objectData = Array.from(
+          document.querySelectorAll("object[data]"),
+        ).map((el) => (el as HTMLObjectElement).data);
+        return [...hrefs, ...iframeSrcs, ...embedSrcs, ...objectData];
+      })
       .catch(() => [] as string[]);
+
+    // Varmat PDF-osoitteet (".pdf" näkyy URL:ssa) ladataan suoraan.
+    const pdfLinks = [
+      ...new Set(candidateUrls.filter((h) => h.toLowerCase().includes(".pdf"))),
+    ];
+    // Muut upotetut lähteet: tarkistetaan content-type ennen jäsentämistä,
+    // koska esim. Google Docs -katselin tms. ei näytä ".pdf":ää URL:ssa.
+    const uncheckedUrls = [
+      ...new Set(
+        candidateUrls.filter(
+          (h) => !h.toLowerCase().includes(".pdf") && h.startsWith("http"),
+        ),
+      ),
+    ];
 
     if (pdfLinks.length > 0) {
       console.log(`Found ${pdfLinks.length} PDF link(s) on ${url}:`, pdfLinks);
@@ -92,14 +137,26 @@ export async function fetchRenderedHtml(
           console.log(`PDF fetch failed (${res.status()}): ${pdfUrl}`);
           continue;
         }
-        const buffer = await res.body();
-        const result = await new PDFParse({ data: buffer }).getText();
-        if (result.text.trim()) {
+        const text = await parsePdfBuffer(await res.body(), pdfUrl);
+        if (text) {
           console.log(`Extracted PDF from link: ${pdfUrl}`);
-          pdfTexts.push(result.text);
+          pdfTexts.push(text);
         }
       } catch (err) {
         console.error(`PDF fetch/parse error for ${pdfUrl}:`, err);
+      }
+    }
+
+    for (const embeddedUrl of uncheckedUrls) {
+      try {
+        const res = await context.request.get(embeddedUrl);
+        const ct = res.headers()["content-type"] ?? "";
+        if (!res.ok() || !ct.includes("application/pdf")) continue;
+        console.log(`Found embedded PDF (via content-type): ${embeddedUrl}`);
+        const text = await parsePdfBuffer(await res.body(), embeddedUrl);
+        if (text) pdfTexts.push(text);
+      } catch {
+        // Ei PDF tai haku epäonnistui - ohitetaan hiljaa
       }
     }
 

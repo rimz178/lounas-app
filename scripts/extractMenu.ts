@@ -42,6 +42,37 @@ Language:
 - Finnish
 `;
 
+// Fallback kun pdf-parse ei löydä tekstikerrosta (esim. skannattu/kuvattu lounaslista).
+// Claude lukee PDF-sivut myös kuvina, joten tämä toimii ilman erillistä OCR:ää.
+export async function readPdfWithClaude(buffer: Buffer): Promise<string> {
+  const message = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 4096,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: buffer.toString("base64"),
+            },
+          },
+          {
+            type: "text",
+            text: "Transcribe all visible text from this PDF, focusing especially on any lunch menu content (dish names, days of the week). Output the raw text only, no commentary.",
+          },
+        ],
+      },
+    ],
+  });
+
+  const block = message.content[0];
+  return block.type === "text" ? block.text : "";
+}
+
 export async function extractMenu(text: string) {
   const MAX_CHARS = 20000;
   const truncatedText = text.slice(0, MAX_CHARS);
