@@ -1,9 +1,24 @@
 import { PDFParse } from "pdf-parse";
 import type { BrowserContext } from "playwright";
-import { readPdfWithClaude } from "./extractMenu";
+import { readPdfWithClaude, type ImageInput } from "./extractMenu";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MENU_KEYWORDS = ["lounas", "menu", "viikko", "ruokalista", "lunch"];
+const SKIP_IMAGE_PATTERN = /logo|icon|avatar|sprite|divider|placeholder|badge/i;
+const MAX_IMAGES = 8;
+
+export interface FetchResult {
+  text: string;
+  images: ImageInput[];
+}
+
+function toMediaType(contentType: string): ImageInput["mediaType"] | null {
+  const ct = contentType.split(";")[0].trim().toLowerCase();
+  if (ct === "image/jpeg" || ct === "image/png" || ct === "image/gif" || ct === "image/webp") {
+    return ct;
+  }
+  return null;
+}
 
 // Jäsentää PDF-puskurin: kokeillaan ensin pdf-parsea, ja jos tekstikerrosta ei löydy
 // (esim. skannattu/kuvattu lounaslista), pyydetään Claudea lukemaan PDF suoraan.
@@ -28,7 +43,7 @@ async function parsePdfBuffer(
 export async function fetchRenderedHtml(
   context: BrowserContext,
   url: string,
-): Promise<string> {
+): Promise<FetchResult> {
   const page = await context.newPage();
   page.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(DEFAULT_TIMEOUT_MS);
@@ -186,10 +201,49 @@ export async function fetchRenderedHtml(
       visibleText.substring(0, 500),
     );
 
-    return visibleText;
+    // Kerätään sivulta valokuvatut/kuvana upotetut menut (esim. WP-postaukset,
+    // Facebook-syöte-widgetit) — nämä eivät ole PDF- tai tekstisisältöä.
+    const images: ImageInput[] = [];
+    const imgCandidates = await page
+      .evaluate(() =>
+        Array.from(document.querySelectorAll("img[src]")).map((img) => {
+          const el = img as HTMLImageElement;
+          return {
+            src: el.currentSrc || el.src,
+            width: el.naturalWidth || el.width || 0,
+            height: el.naturalHeight || el.height || 0,
+          };
+        }),
+      )
+      .catch(() => [] as { src: string; width: number; height: number }[]);
+
+    const imageTargets = imgCandidates
+      .filter((i) => i.src.startsWith("http") && i.width * i.height >= 40_000)
+      .filter((i) => !SKIP_IMAGE_PATTERN.test(i.src))
+      .sort((a, b) => b.width * b.height - a.width * a.height)
+      .slice(0, MAX_IMAGES);
+
+    for (const target of imageTargets) {
+      try {
+        const res = await context.request.get(target.src);
+        if (!res.ok()) continue;
+        const mediaType = toMediaType(res.headers()["content-type"] ?? "");
+        if (!mediaType) continue;
+        const buffer = await res.body();
+        if (buffer.byteLength > 5 * 1024 * 1024) continue;
+        images.push({ data: buffer.toString("base64"), mediaType });
+      } catch {
+        // Kuvan haku epäonnistui - ohitetaan hiljaa
+      }
+    }
+    if (images.length > 0) {
+      console.log(`Collected ${images.length} candidate image(s) for ${url}`);
+    }
+
+    return { text: visibleText, images };
   } catch (error) {
     console.error(`Error fetching URL ${url}:`, error);
-    return "";
+    return { text: "", images: [] };
   } finally {
     await page.close();
   }

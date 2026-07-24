@@ -14,7 +14,7 @@ const systemPrompt = `
 You are a tool that extracts lunch menus from Finnish restaurant websites.
 
 Rules:
-- Use ONLY the provided content (may include visible page text, JSON API responses, PDF text, or a combination of these).
+- Use ONLY the provided content (may include visible page text, JSON API responses, PDF text, photographed/scanned menu images, or a combination of these).
 - Look for keywords like "lounas", "menu", "lounaslista", or "lounasmenu".
 - Extract only the lunch menu items and their corresponding days.
 - Structure the output by day of the week (Maanantai, Tiistai, etc.) or as a weekly list.
@@ -73,7 +73,12 @@ export async function readPdfWithClaude(buffer: Buffer): Promise<string> {
   return block.type === "text" ? block.text : "";
 }
 
-export async function extractMenu(text: string) {
+export type ImageInput = {
+  data: string;
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+};
+
+export async function extractMenu(text: string, images: ImageInput[] = []) {
   const MAX_CHARS = 20000;
   const truncatedText = text.slice(0, MAX_CHARS);
 
@@ -84,16 +89,24 @@ export async function extractMenu(text: string) {
     day: "numeric",
   });
 
+  const content: Anthropic.MessageParam["content"] = images.map((img) => ({
+    type: "image" as const,
+    source: {
+      type: "base64" as const,
+      media_type: img.mediaType,
+      data: img.data,
+    },
+  }));
+  content.push({
+    type: "text",
+    text: `Today is ${today}. Extract the menu based on the following content (may include attached photographs/scans of a printed menu):\n\n${truncatedText}`,
+  });
+
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: `Today is ${today}. Extract the menu based on the following content:\n\n${truncatedText}`,
-      },
-    ],
+    messages: [{ role: "user", content }],
   });
 
   const block = message.content[0];
