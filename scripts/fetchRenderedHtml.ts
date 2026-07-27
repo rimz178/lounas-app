@@ -111,20 +111,12 @@ export async function fetchRenderedHtml(
       .catch(() => {});
     await page.waitForTimeout(1200);
 
-    // Odotetaan että lazy-loadatut kuvat ehtivät latautua
+    // Odotetaan max 3s että lazy-loadatut kuvat latautuvat
     await page
-      .evaluate(async () => {
-        await Promise.all(
-          Array.from(document.querySelectorAll("img")).map((img) =>
-            img.complete
-              ? Promise.resolve()
-              : new Promise<void>((res) => {
-                  img.onload = () => res();
-                  img.onerror = () => res();
-                }),
-          ),
-        );
-      })
+      .waitForFunction(
+        () => Array.from(document.querySelectorAll("img")).every((img) => (img as HTMLImageElement).complete),
+        { timeout: 3000 },
+      )
       .catch(() => {});
 
     // Haetaan sivulta kaikki mahdolliset PDF-lähteet: suorat linkit sekä
