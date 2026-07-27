@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse";
 import type { BrowserContext } from "playwright";
-import { readPdfWithClaude, type ImageInput } from "./extractMenu";
+import { type ImageInput, readPdfWithClaude } from "./extractMenu";
 
 const DEFAULT_TIMEOUT_MS = 90_000;
 const MENU_KEYWORDS = ["lounas", "menu", "viikko", "ruokalista", "lunch"];
@@ -14,14 +14,18 @@ export interface FetchResult {
 
 function toMediaType(contentType: string): ImageInput["mediaType"] | null {
   const ct = contentType.split(";")[0].trim().toLowerCase();
-  if (ct === "image/jpeg" || ct === "image/png" || ct === "image/gif" || ct === "image/webp") {
+  if (
+    ct === "image/jpeg" ||
+    ct === "image/png" ||
+    ct === "image/gif" ||
+    ct === "image/webp"
+  ) {
     return ct;
   }
   return null;
 }
 
-// Jäsentää PDF-puskurin: kokeillaan ensin pdf-parsea, ja jos tekstikerrosta ei löydy
-// (esim. skannattu/kuvattu lounaslista), pyydetään Claudea lukemaan PDF suoraan.
+
 async function parsePdfBuffer(
   buffer: Buffer,
   sourceUrl: string,
@@ -106,6 +110,22 @@ export async function fetchRenderedHtml(
       .evaluate(() => window.scrollTo(0, document.body.scrollHeight))
       .catch(() => {});
     await page.waitForTimeout(1200);
+
+    // Odotetaan että lazy-loadatut kuvat ehtivät latautua
+    await page
+      .evaluate(async () => {
+        await Promise.all(
+          Array.from(document.querySelectorAll("img")).map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((res) => {
+                  img.onload = () => res();
+                  img.onerror = () => res();
+                }),
+          ),
+        );
+      })
+      .catch(() => {});
 
     // Haetaan sivulta kaikki mahdolliset PDF-lähteet: suorat linkit sekä
     // iframe/embed/object-elementit (upotetut PDF-katselimet eivät aina
