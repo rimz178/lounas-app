@@ -24,8 +24,20 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 async function refresh() {
   // Käynnistä selain kerran
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+    ],
+  });
+  const context = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    extraHTTPHeaders: {
+      "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+    },
+  });
 
   try {
     const { data: restaurants, error } = await supabase
