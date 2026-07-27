@@ -51,32 +51,34 @@ async function refresh() {
       throw error;
     }
 
-    for (const r of restaurants ?? []) {
-      if (!r.url) continue;
-      console.log("Processing:", r.name);
+    const CONCURRENCY = 4;
+    const list = (restaurants ?? []).filter((r) => r.url);
 
-      try {
-        // Välitä selainkonteksti funktiolle
-        const result = await fetchRenderedHtml(context, r.url);
-        const menu = await extractMenu(result.text, result.images);
+    for (let i = 0; i < list.length; i += CONCURRENCY) {
+      const batch = list.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (r) => {
+          console.log("Processing:", r.name);
+          try {
+            const result = await fetchRenderedHtml(context, r.url);
+            const menu = await extractMenu(result.text, result.images);
 
-        const { error: upsertError } = await supabase.from("menus").upsert(
-          {
-            restaurant_id: r.id,
-            menu_text: menu,
-          },
-          { onConflict: "restaurant_id" },
-        );
+            const { error: upsertError } = await supabase.from("menus").upsert(
+              { restaurant_id: r.id, menu_text: menu },
+              { onConflict: "restaurant_id" },
+            );
 
-        if (upsertError) {
-          console.error(
-            `Supabase upsert failed for ${r.name}:`,
-            upsertError.message,
-          );
-        }
-      } catch (err) {
-        console.error(`Failed for ${r.name} (${r.url}):`, err);
-      }
+            if (upsertError) {
+              console.error(
+                `Supabase upsert failed for ${r.name}:`,
+                upsertError.message,
+              );
+            }
+          } catch (err) {
+            console.error(`Failed for ${r.name} (${r.url}):`, err);
+          }
+        }),
+      );
     }
   } finally {
     await browser.close();
