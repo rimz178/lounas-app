@@ -152,8 +152,6 @@ export async function fetchRenderedHtml(
     const pdfLinks = [
       ...new Set(candidateUrls.filter((h) => h.toLowerCase().includes(".pdf"))),
     ];
-    // Muut upotetut lähteet: tarkistetaan content-type ennen jäsentämistä,
-    // koska esim. Google Docs -katselin tms. ei näytä ".pdf":ää URL:ssa.
     const uncheckedUrls = [
       ...new Set(
         candidateUrls.filter(
